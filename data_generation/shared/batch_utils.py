@@ -2,20 +2,13 @@ import os
 import json
 import time
 from pathlib import Path
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-load_dotenv()
-
 class BatchManager:
-    def __init__(self):
-        api_key = os.environ.get("GEMINI_API_KEY")
+    def __init__(self, api_key: str):
         if not api_key:
-            api_key = os.environ.get("GOOGLE_API_KEY")
-            
-        if not api_key:
-            raise ValueError("Missing GEMINI_API_KEY or GOOGLE_API_KEY in environment variables.")
+            raise ValueError("API key must be provided to BatchManager")
         self.client = genai.Client(api_key=api_key)
 
     def submit_batch(self, jsonl_file_path: Path, display_name: str) -> dict:

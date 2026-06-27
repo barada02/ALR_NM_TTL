@@ -10,7 +10,8 @@ from shared.extract_utils import Extractor
 def run_state_machine(
     dataset_type: str,
     base_dir: Path,
-    prompt_builder_fn: Callable[[int], list[dict]]
+    prompt_builder_fn: Callable[[int], list[dict]],
+    api_key: str
 ):
     STATE_FILE = base_dir / "state" / f"{dataset_type}_state.json"
     REQUESTS_FILE = base_dir / "state" / f"{dataset_type}_requests.jsonl"
@@ -26,7 +27,7 @@ def run_state_machine(
     print(f"Current State: {status}")
     
     if status == "NOT_STARTED":
-        print(f"Building {BATCH_SIZE} requests for {dataset_type}...")
+        print(f"Building requests for {dataset_type}...")
         REQUESTS_FILE.parent.mkdir(parents=True, exist_ok=True)
         requests = prompt_builder_fn(BATCH_SIZE)
         
@@ -50,8 +51,7 @@ def run_state_machine(
         if not job_name:
             print("Error: SUBMITTED state but no job_name found.")
             return
-            
-        batch_mgr = BatchManager()
+        batch_mgr = BatchManager(api_key=api_key)
         job_state, result_file_name = batch_mgr.check_status(job_name)
         
         if "SUCCEEDED" in job_state:
