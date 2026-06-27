@@ -11,7 +11,7 @@ class BatchManager:
             raise ValueError("API key must be provided to BatchManager")
         self.client = genai.Client(api_key=api_key)
 
-    def submit_batch(self, jsonl_file_path: Path, display_name: str) -> dict:
+    def submit_batch(self, jsonl_file_path: Path, display_name: str, model_name: str) -> dict:
         """Uploads a jsonl file and creates a batch job. Returns job info."""
         print(f"Uploading file: {jsonl_file_path.name} ...")
         uploaded_file = self.client.files.upload(
@@ -25,7 +25,7 @@ class BatchManager:
         
         print("Creating batch job...")
         file_batch_job = self.client.batches.create(
-            model="gemini-1.5-flash",
+            model=model_name,
             src=uploaded_file.name,
             config={
                 'display_name': display_name,

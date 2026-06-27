@@ -3,7 +3,7 @@ import uuid
 from pathlib import Path
 from typing import Callable
 
-from shared.config import DATAFORGE_SYSTEM_INSTRUCTION, BATCH_SIZE
+from shared.config import DATAFORGE_SYSTEM_INSTRUCTION, BATCH_SIZE, MODEL_NAME
 from shared.batch_utils import BatchManager, StateManager
 from shared.extract_utils import Extractor
 
@@ -37,7 +37,7 @@ def run_state_machine(
         print(f"Requests saved to {REQUESTS_FILE}")
         
         batch_mgr = BatchManager(api_key=api_key)
-        job_info = batch_mgr.submit_batch(REQUESTS_FILE, f"minititan-{dataset_type}-batch")
+        job_info = batch_mgr.submit_batch(REQUESTS_FILE, f"minititan-{dataset_type}-batch", MODEL_NAME)
         
         state_mgr.save_state({
             "status": "SUBMITTED",
