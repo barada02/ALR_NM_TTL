@@ -36,7 +36,7 @@ def run_state_machine(
                 f.write(json.dumps(req) + "\n")
         print(f"Requests saved to {REQUESTS_FILE}")
         
-        batch_mgr = BatchManager()
+        batch_mgr = BatchManager(api_key=api_key)
         job_info = batch_mgr.submit_batch(REQUESTS_FILE, f"minititan-{dataset_type}-batch")
         
         state_mgr.save_state({

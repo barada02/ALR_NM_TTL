@@ -31,6 +31,13 @@ def build_test_requests(batch_size: int) -> list[dict]:
         
     return requests
 
+import os
+from dotenv import load_dotenv
+
+# Load env variables at the top level
+load_dotenv(Path(__file__).parent / ".env")
+API_KEY = os.environ.get("GEMINI_API_KEY")
+
 if __name__ == "__main__":
     # This will reuse all the robust state machine logic, but with our test batch of 6!
-    run_state_machine(DATASET_TYPE, BASE_DIR, build_test_requests)
+    run_state_machine(DATASET_TYPE, BASE_DIR, build_test_requests, API_KEY)
