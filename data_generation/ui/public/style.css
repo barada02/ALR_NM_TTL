@@ -1,17 +1,20 @@
-/* CSS Design System for MiniTitan Explorer */
+/* CSS Design System for MiniTitan Explorer - Black & White Line Edition */
 
 :root {
-    --bg-primary: #0a0b10;
-    --bg-secondary: #12131a;
-    --bg-tertiary: #1a1c29;
-    --bg-glass: rgba(18, 19, 26, 0.7);
-    --border-color: rgba(255, 255, 255, 0.08);
-    --border-hover: rgba(147, 51, 234, 0.4);
+    --bg-primary: #000000;
+    --bg-secondary: #000000;
+    --bg-tertiary: #000000;
+    --bg-card: #080808;
     
-    --text-primary: #f3f4f6;
-    --text-secondary: #9ca3af;
-    --text-muted: #6b7280;
+    --border-color: #222222;
+    --border-hover: #666666;
+    --border-active: #ffffff;
     
+    --text-primary: #ffffff;
+    --text-secondary: #c5c5c5;
+    --text-muted: #666666;
+    
+    /* Colored Highlights & Accents (Preserved as requested) */
     --accent: #8b5cf6;
     --accent-glow: rgba(139, 92, 246, 0.15);
     --accent-secondary: #ec4899;
@@ -22,7 +25,7 @@
     
     --sidebar-width: 280px;
     --header-height: 70px;
-    --transition-speed: 0.25s;
+    --transition-speed: 0.15s;
     --font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
@@ -42,20 +45,20 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar (Skeletal) */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
 }
 ::-webkit-scrollbar-track {
     background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    background: var(--bg-tertiary);
-    border-radius: 4px;
+    background: #333333;
+    border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--accent);
+    background: #888888;
 }
 
 /* App Layout */
@@ -65,7 +68,7 @@ body {
     width: 100vw;
 }
 
-/* Sidebar */
+/* Sidebar (Black with White Divider Line) */
 .sidebar {
     width: var(--sidebar-width);
     background-color: var(--bg-secondary);
@@ -84,30 +87,30 @@ body {
     margin-bottom: 32px;
 }
 
+/* Logo is Black and White */
 .brand-logo {
     width: 36px;
     height: 36px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
-    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
-    color: white;
-    box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+    color: #000000;
+    font-weight: 800;
 }
 
 .brand h1 {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: -0.5px;
-    background: linear-gradient(to right, #ffffff, #d1d5db);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ffffff;
 }
 
 .section-title {
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     color: var(--text-muted);
@@ -122,11 +125,12 @@ body {
     flex-grow: 1;
 }
 
+/* Dataset List Items: Black and White lines */
 .dataset-item {
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: 6px;
     background-color: transparent;
-    border: 1px solid transparent;
+    border: 1px solid var(--border-color);
     cursor: pointer;
     transition: all var(--transition-speed);
     display: flex;
@@ -135,25 +139,22 @@ body {
 }
 
 .dataset-item:hover {
-    background-color: rgba(255, 255, 255, 0.02);
-    border-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-hover);
 }
 
 .dataset-item.active {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.05));
-    border-color: var(--accent);
-    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.05);
+    background-color: #111111;
+    border-color: var(--border-active);
 }
 
 .dataset-item .name {
     font-size: 13px;
     font-weight: 600;
     color: var(--text-secondary);
-    transition: color var(--transition-speed);
 }
 
 .dataset-item.active .name {
-    color: white;
+    color: #ffffff;
 }
 
 .dataset-item .meta {
@@ -162,9 +163,9 @@ body {
 }
 
 .stats-card {
-    background: linear-gradient(to bottom right, var(--bg-tertiary), rgba(18, 19, 26, 0.4));
+    background-color: transparent;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 16px;
     margin-top: auto;
 }
@@ -172,7 +173,7 @@ body {
 .stats-title {
     font-size: 12px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: #ffffff;
     margin-bottom: 6px;
 }
 
@@ -223,19 +224,18 @@ body {
     border: 1px solid var(--border-color);
     color: white;
     padding: 10px 16px 10px 36px;
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 13px;
     outline: none;
     transition: all var(--transition-speed);
 }
 
 .search-container input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 10px var(--accent-glow);
+    border-color: var(--border-active);
 }
 
 .search-container input:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
 }
 
@@ -258,30 +258,29 @@ body {
     cursor: pointer;
     outline: none;
     border: 1px solid var(--border-color);
-    background-color: var(--bg-tertiary);
+    background-color: var(--bg-primary);
     color: var(--text-secondary);
     transition: all var(--transition-speed);
 }
 
 .btn:hover:not(:disabled) {
-    background-color: var(--accent);
-    color: white;
-    border-color: var(--accent);
+    background-color: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
 }
 
 .btn:disabled {
-    opacity: 0.3;
+    opacity: 0.2;
     cursor: not-allowed;
 }
 
-/* Workspace */
+/* Workspace Panels: Black and White Lines */
 .workspace {
     flex-grow: 1;
     display: flex;
     overflow: hidden;
 }
 
-/* Panels */
 .list-panel, .viewer-panel {
     display: flex;
     flex-direction: column;
@@ -291,7 +290,7 @@ body {
 .list-panel {
     width: 340px;
     border-right: 1px solid var(--border-color);
-    background-color: rgba(18, 19, 26, 0.3);
+    background-color: var(--bg-primary);
     flex-shrink: 0;
 }
 
@@ -307,32 +306,34 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
     color: var(--text-muted);
-    letter-spacing: 0.5px;
-    background-color: rgba(18, 19, 26, 0.1);
+    letter-spacing: 1px;
+    background-color: var(--bg-primary);
     flex-shrink: 0;
 }
 
-/* Badge styling */
+/* Badges Keep Colors */
 .badge {
-    background-color: var(--bg-tertiary);
+    background-color: #222222;
     color: var(--text-secondary);
     padding: 2px 8px;
     border-radius: 4px;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
+    border: 1px solid transparent;
 }
 
 .badge.active {
     background-color: var(--accent-glow);
     color: var(--accent);
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-color: rgba(139, 92, 246, 0.3);
 }
 
-/* Lists */
+/* Lists and Cards: Black and White Lines */
 .samples-list {
     flex-grow: 1;
     overflow-y: auto;
@@ -346,25 +347,22 @@ body {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     padding: 16px;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all var(--transition-speed);
     display: flex;
     flex-direction: column;
     gap: 8px;
-    animation: fadeIn 0.4s ease forwards;
+    animation: fadeIn 0.3s ease forwards;
 }
 
 .sample-card:hover {
     border-color: var(--border-hover);
-    transform: translateY(-2px);
-    background-color: var(--bg-tertiary);
 }
 
 .sample-card.selected {
-    border-color: var(--accent);
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), transparent);
-    box-shadow: 0 0 15px rgba(139, 92, 246, 0.05);
+    border-color: var(--border-active);
+    background-color: #0c0c0c;
 }
 
 .sample-card-header {
@@ -379,8 +377,9 @@ body {
     font-weight: 600;
 }
 
+/* Colors Kept for SFT Tags */
 .sample-card-tag {
-    font-size: 10px;
+    font-size: 9px;
     text-transform: uppercase;
     font-weight: 700;
     padding: 1px 6px;
@@ -430,11 +429,11 @@ body {
 .empty-icon {
     font-size: 48px;
     margin-bottom: 16px;
-    opacity: 0.5;
+    opacity: 0.3;
 }
 
 .empty-state h3 {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text-secondary);
     margin-bottom: 8px;
@@ -446,9 +445,9 @@ body {
     line-height: 1.5;
 }
 
-/* Detailed Renderers styling */
+/* Detailed Renderers: Black and White Layout */
 .viewer-card {
-    animation: slideUp 0.3s ease-out forwards;
+    animation: slideUp 0.25s ease-out forwards;
 }
 
 .viewer-meta-row {
@@ -459,10 +458,10 @@ body {
 }
 
 .meta-pill {
-    background-color: var(--bg-secondary);
+    background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
     padding: 6px 12px;
-    border-radius: 20px;
+    border-radius: 6px;
     font-size: 12px;
     color: var(--text-secondary);
 }
@@ -472,15 +471,16 @@ body {
 }
 
 .viewer-section {
-    background-color: var(--bg-secondary);
+    background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 24px;
     margin-bottom: 24px;
 }
 
+/* Section titles keep accent color */
 .viewer-section h2 {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -498,6 +498,7 @@ body {
     white-space: pre-wrap;
 }
 
+/* Facts highlights keep color */
 .highlight-fact {
     background-color: rgba(245, 158, 11, 0.12);
     border-bottom: 2px dashed #f59e0b;
@@ -505,7 +506,7 @@ body {
     border-radius: 2px;
 }
 
-/* Facts List */
+/* Core Facts */
 .facts-list {
     display: flex;
     flex-direction: column;
@@ -513,11 +514,11 @@ body {
 }
 
 .fact-item {
-    background-color: rgba(255, 255, 255, 0.02);
+    background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-left: 3px solid var(--accent-secondary);
+    border-left: 3px solid var(--accent-secondary); /* pink fact line */
     padding: 12px 16px;
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 6px 6px 0;
     font-size: 13px;
     line-height: 1.5;
 }
@@ -532,20 +533,22 @@ body {
 .chat-bubble {
     max-width: 80%;
     padding: 12px 16px;
-    border-radius: 12px;
+    border-radius: 8px;
     font-size: 13px;
     line-height: 1.5;
     position: relative;
 }
 
+/* User bubble: Black and White */
 .chat-bubble.user {
     align-self: flex-start;
-    background-color: var(--bg-tertiary);
+    background-color: var(--bg-primary);
     color: var(--text-primary);
     border-bottom-left-radius: 2px;
     border: 1px solid var(--border-color);
 }
 
+/* Assistant bubble: Colored (kept as highlighted content) */
 .chat-bubble.assistant {
     align-self: flex-end;
     background: linear-gradient(135deg, var(--accent), #7c3aed);
@@ -564,7 +567,7 @@ body {
 .timeline {
     position: relative;
     padding-left: 24px;
-    border-left: 2px solid var(--bg-tertiary);
+    border-left: 2px solid var(--border-color);
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -574,6 +577,7 @@ body {
     position: relative;
 }
 
+/* timeline dot: colored */
 .timeline-dot {
     position: absolute;
     left: -33px;
@@ -585,8 +589,9 @@ body {
     border: 3px solid var(--accent);
 }
 
+/* step card: B&W lines */
 .step-card {
-    background-color: rgba(255, 255, 255, 0.02);
+    background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 16px;
@@ -626,8 +631,9 @@ body {
     color: var(--text-secondary);
 }
 
+/* Key result: keeps color */
 .step-key-res {
-    background-color: rgba(16, 185, 129, 0.06);
+    background-color: rgba(16, 185, 129, 0.05);
     border: 1px dashed rgba(16, 185, 129, 0.3);
     padding: 6px 12px;
     border-radius: 4px;
@@ -636,9 +642,9 @@ body {
     margin-top: 8px;
 }
 
-/* Decision Point */
+/* Decision Point: keeps color alert style */
 .decision-alert {
-    background-color: rgba(239, 68, 68, 0.04);
+    background-color: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(239, 68, 68, 0.15);
     border-left: 4px solid var(--error);
 }
@@ -651,7 +657,7 @@ body {
 }
 
 .decision-card {
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(0, 0, 0, 0.4);
     border: 1px solid var(--border-color);
     padding: 12px;
     border-radius: 6px;
@@ -673,7 +679,7 @@ body {
     color: var(--text-secondary);
 }
 
-/* Spinner */
+/* Loading Spinner */
 .loading-spinner {
     display: flex;
     flex-direction: column;
@@ -687,8 +693,8 @@ body {
 .spinner {
     width: 40px;
     height: 40px;
-    border: 3px solid rgba(139, 92, 246, 0.1);
-    border-top: 3px solid var(--accent);
+    border: 3px solid rgba(255, 255, 255, 0.05);
+    border-top: 3px solid #ffffff;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

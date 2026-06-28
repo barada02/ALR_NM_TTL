@@ -39,6 +39,5 @@ data_generation/jobs/
 .idea/
 .DS_Store
 
-node_modules/
-data_generation/ui/node_modules/
-data_generation/ui/node_modules/*
+# Node modules (Matches node_modules at any directory depth)
+**/node_modules/
