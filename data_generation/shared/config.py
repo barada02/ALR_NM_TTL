@@ -1,7 +1,7 @@
 import os
 
 # Use a specific model version supported by Google GenAI Batch API
-MODEL_NAME = "gemini-3.5-flash"  # Keep costs low for generation
+MODEL_NAME = "gemini-3.1-pro-preview"  # Keep costs low for generation
 BATCH_SIZE = 10000               # Number of samples per phase
 
 # ── Prompt Templates ───────────────────────────────────────────────────────────
