@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniTitan SFT Dataset Explorer</title>
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">⚡</div>
+                <h1>MiniTitan Explorer</h1>
+            </div>
+            
+            <div class="section-title">Datasets</div>
+            <nav class="dataset-list" id="datasetList">
+                <div class="loading-spinner-small">Loading datasets...</div>
+            </nav>
+            
+            <div class="stats-card">
+                <div class="stats-title">Explore SFT Data</div>
+                <div class="stats-desc">Navigate, search, and visually inspect SFT samples for the long-term memory module.</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header bar -->
+            <header class="header">
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Search by topic, constraint, or keyword..." disabled>
+                </div>
+                
+                <div class="pagination-controls">
+                    <button class="btn btn-nav" id="btnPrev" disabled>&larr; Prev</button>
+                    <span class="page-indicator" id="pageIndicator">Page 0 of 0</span>
+                    <button class="btn btn-nav" id="btnNext" disabled>Next &rarr;</button>
+                </div>
+            </header>
+
+            <!-- Viewer split workspace -->
+            <div class="workspace">
+                <!-- Left panel: Samples List -->
+                <div class="list-panel">
+                    <div class="panel-header">
+                        <span id="itemsCount">0 samples found</span>
+                    </div>
+                    <div class="samples-list" id="samplesList">
+                        <div class="empty-state">Select a dataset to begin.</div>
+                    </div>
+                </div>
+
+                <!-- Right panel: Sample Detailed Viewer -->
+                <div class="viewer-panel">
+                    <div class="panel-header">
+                        <span>Detailed Inspector</span>
+                        <span class="badge" id="schemaBadge">No Data</span>
+                    </div>
+                    <div class="viewer-content" id="viewerContent">
+                        <div class="empty-state">
+                            <div class="empty-icon">📂</div>
+                            <h3>No Sample Selected</h3>
+                            <p>Select a dataset and click on a sample from the list to view its complete structure.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

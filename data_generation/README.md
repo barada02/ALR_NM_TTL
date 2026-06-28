@@ -28,6 +28,11 @@ data_generation/
 ├── generate_agentic.py                 # [TRACKED] Agentic generation entrypoint
 ├── test_batch.py                       # [TRACKED] Test entrypoint for 6-sample runs
 │
+├── ui/                                 # [TRACKED] Web-based SFT dataset explorer UI
+│   ├── package.json                    # npm configuration and Express dependency
+│   ├── server.js                       # Express.js stream-based paginated backend
+│   └── public/                         # Static single-page frontend application
+│
 ├── .env.example                        # [TRACKED] Template for environment variables
 ├── .env                                # [GITIGNORED] Holds local GEMINI_API_KEY
 │
@@ -107,3 +112,16 @@ python data_generation/generate_agentic.py
 ```
 
 *Note: Since these jobs are processed in the cloud, the script will submit the job and exit. Rerun the commands later to check status and automatically download and parse the results.*
+
+### 5. Launch the Dataset Explorer Web UI
+Once the datasets are successfully built under `processed/`, you can explore them visually:
+```bash
+# Navigate to the UI directory
+cd data_generation/ui
+
+# Install dependencies and start server
+npm install
+npm start
+```
+Open [http://localhost:3000](http://localhost:3000) in your web browser to browse and inspect the generated samples.
+

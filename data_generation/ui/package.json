@@ -1,0 +1,14 @@
+{
+  "name": "minititan-dataset-explorer",
+  "version": "1.0.0",
+  "description": "Web-based browser and inspector for MiniTitan SFT datasets",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "author": "Antigravity",
+  "license": "ISC"
+}

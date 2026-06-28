@@ -38,3 +38,7 @@ data_generation/jobs/
 .vscode/
 .idea/
 .DS_Store
+
+node_modules/
+data_generation/ui/node_modules/
+data_generation/ui/node_modules/*
