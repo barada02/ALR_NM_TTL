@@ -27,11 +27,14 @@ Format as JSON with these exact fields:
 }}
 
 Rules:
-- The answer must be unambiguous and verbatim extractable from context
-- Include at least 2 distractors (similar-sounding wrong facts) to make it hard
-- The question should require the model to remember something from far back
+- The story or document must be realistic, highly detailed, and logically consistent. Avoid sci-fi jargon, fantasy elements, or absurd situations.
+- The answer must be unambiguous and verbatim extractable from the context.
+- Include at least 2 distractors (similar-sounding wrong facts, e.g. alternate numbers, dates, or specifications) to make it challenging.
+- The question should require the model to remember something from far back.
 - Topic: {topic}
-- Constraint: {constraint}
+- Setting/Location: {setting}
+- Perspective/Role: Written from the perspective of {role}
+- Structural Constraint: {constraint}
 
 Return ONLY valid JSON."""
 
@@ -55,12 +58,15 @@ Format as JSON:
 }}
 
 Rules:
-- 12-20 turns total
-- At least 2 memory anchors (info established early, tested late)
-- The conversation should feel NATURAL — not obviously a memory test
-- Intervening turns should introduce noise/distractors
-- Topic: {topic}
-- Constraint: {constraint}
+- 12-20 turns total.
+- At least 2 memory anchors (info established early, tested late).
+- The conversation should feel NATURAL — not obviously a memory test.
+- Speakers should not speak in an absurd or robotic manner; the dialogue must sound like actual human conversation in the given setting.
+- Intervening turns should introduce noise, topic changes, or distractors.
+- Topic/Purpose: {topic}
+- Medium/Setting: {setting}
+- Speakers: {persona}
+- Dialogue Constraint: {constraint}
 
 Return ONLY valid JSON."""
 
@@ -88,13 +94,14 @@ Format as JSON:
 }}
 
 Rules:
-- 8-15 steps total
-- The critical result from an early step must influence a decision 4+ steps later
-- Include at least one "red herring" intermediate result that might confuse
-- Make it realistic: file operations, API calls, database queries, calculations
+- 8-15 steps total.
+- The critical result from an early step must influence a decision 4+ steps later.
+- Include at least one "red herring" intermediate result that might confuse a memoryless agent.
+- Make it realistic: actual file paths, command names, API query structures, database tables, and exit codes.
+- Do NOT use generic placeholder names like 'tool_1', 'input_a', or 'result_x'. Use real tools from the list below.
 - Domain: {domain}
-- Constraint: {constraint}
+- Infrastructure/Environment: {environment}
+- Allowed Tools: {tools}
+- Operational Constraint: {constraint}
 
 Return ONLY valid JSON."""
-
-

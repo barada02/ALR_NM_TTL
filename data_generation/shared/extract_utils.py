@@ -66,8 +66,8 @@ class Extractor:
                         candidates = response_item["response"]["candidates"]
                         if candidates and "content" in candidates[0]:
                             parts = candidates[0]["content"].get("parts", [])
-                            if parts and "text" in parts[0]:
-                                raw_text = parts[0]["text"]
+                            if parts:
+                                raw_text = "".join(part.get("text", "") for part in parts)
                                 
                                 parsed = self.parse_gemini_json(raw_text)
                                 if parsed:

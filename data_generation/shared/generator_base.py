@@ -86,6 +86,6 @@ def create_request_obj(dataset_type: str, prompt: str) -> dict:
         "request": {
             "contents": [{"parts": [{"text": prompt}]}],
             "system_instruction": {"parts": [{"text": DATAFORGE_SYSTEM_INSTRUCTION}]},
-            "generation_config": {"temperature": 0.9, "max_output_tokens": 2048}
+            "generation_config": {"temperature": 0.9, "max_output_tokens": 20000}
         }
     }
