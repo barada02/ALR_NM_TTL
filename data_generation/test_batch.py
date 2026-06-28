@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from shared.config import LONG_CONTEXT_PROMPT, DIALOGUE_PROMPT, AGENTIC_PROMPT
 from shared.topics import LONG_CONTEXT_TOPICS, DIALOGUE_TOPICS, AGENTIC_DOMAINS
+from shared.topics import LONG_CONTEXT_CONSTRAINTS, DIALOGUE_CONSTRAINTS, AGENTIC_CONSTRAINTS
 from shared.generator_base import run_state_machine, create_request_obj
 
 DATASET_TYPE = "test_batch"
@@ -14,19 +15,22 @@ def build_test_requests(batch_size: int) -> list[dict]:
     # 1. Long Context (2 requests)
     topic_lc = LONG_CONTEXT_TOPICS[0]
     for _ in range(2):
-        prompt = LONG_CONTEXT_PROMPT.format(topic=topic_lc)
+        constraint = random.choice(LONG_CONTEXT_CONSTRAINTS)
+        prompt = LONG_CONTEXT_PROMPT.format(topic=topic_lc, constraint=constraint)
         requests.append(create_request_obj(f"{DATASET_TYPE}_lc", prompt))
         
     # 2. Dialogue (2 requests)
     topic_dialogue = DIALOGUE_TOPICS[0]
     for _ in range(2):
-        prompt = DIALOGUE_PROMPT.format(topic=topic_dialogue)
+        constraint = random.choice(DIALOGUE_CONSTRAINTS)
+        prompt = DIALOGUE_PROMPT.format(topic=topic_dialogue, constraint=constraint)
         requests.append(create_request_obj(f"{DATASET_TYPE}_diag", prompt))
         
     # 3. Agentic (2 requests)
     domain_agentic = AGENTIC_DOMAINS[0]
     for _ in range(2):
-        prompt = AGENTIC_PROMPT.format(domain=domain_agentic)
+        constraint = random.choice(AGENTIC_CONSTRAINTS)
+        prompt = AGENTIC_PROMPT.format(domain=domain_agentic, constraint=constraint)
         requests.append(create_request_obj(f"{DATASET_TYPE}_agent", prompt))
         
     return requests

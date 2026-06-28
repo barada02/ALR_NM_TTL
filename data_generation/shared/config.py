@@ -31,6 +31,7 @@ Rules:
 - Include at least 2 distractors (similar-sounding wrong facts) to make it hard
 - The question should require the model to remember something from far back
 - Topic: {topic}
+- Constraint: {constraint}
 
 Return ONLY valid JSON."""
 
@@ -59,6 +60,7 @@ Rules:
 - The conversation should feel NATURAL — not obviously a memory test
 - Intervening turns should introduce noise/distractors
 - Topic: {topic}
+- Constraint: {constraint}
 
 Return ONLY valid JSON."""
 
@@ -91,6 +93,7 @@ Rules:
 - Include at least one "red herring" intermediate result that might confuse
 - Make it realistic: file operations, API calls, database queries, calculations
 - Domain: {domain}
+- Constraint: {constraint}
 
 Return ONLY valid JSON."""
 

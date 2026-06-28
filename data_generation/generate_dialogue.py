@@ -1,7 +1,7 @@
 import random
 from pathlib import Path
 from shared.config import DIALOGUE_PROMPT
-from shared.topics import DIALOGUE_TOPICS
+from shared.topics import DIALOGUE_TOPICS, DIALOGUE_CONSTRAINTS
 from shared.generator_base import run_state_machine, create_request_obj
 
 DATASET_TYPE = "dialogue"
@@ -11,7 +11,8 @@ def build_requests(batch_size: int) -> list[dict]:
     requests = []
     for _ in range(batch_size):
         topic = random.choice(DIALOGUE_TOPICS)
-        prompt = DIALOGUE_PROMPT.format(topic=topic)
+        constraint = random.choice(DIALOGUE_CONSTRAINTS)
+        prompt = DIALOGUE_PROMPT.format(topic=topic, constraint=constraint)
         requests.append(create_request_obj(DATASET_TYPE, prompt))
     return requests
 
