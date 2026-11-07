@@ -26,6 +26,8 @@ class ExpConfig:
     use_momentum: bool = True
     second_order: bool = True
     aux_lag_chunks: int = 4
+    retention_bias: float = 4.0
+    retention_learned: bool = True
     aux_weight: float = 0.1
 
     # ── task ─────────────────────────────────────────────────────────────────
@@ -42,6 +44,8 @@ class ExpConfig:
     n_queries: int = 8
     train_facts_min: int = 16
     train_facts_max: int = 64
+    curriculum: float = 0.0          # >0: the max #facts ramps linearly train_facts_min → train_facts_max over this
+                                     # fraction of training (fixes the 'never takes off' failure on long distances)
     eval_facts: str = "16,64,256,512"
     # oracle ablations (typed task): force read-only positions
     oracle_write_mask: bool = False  # queries are read-only

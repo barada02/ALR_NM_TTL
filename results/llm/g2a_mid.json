@@ -1,0 +1,811 @@
+{
+ "config": {
+  "run_name": "g2a_mid",
+  "base_model": "Qwen/Qwen2-0.5B",
+  "insert": "mid",
+  "insert_layer": -1,
+  "seg_len": 256,
+  "max_ctx_segments": 8,
+  "mem_mode": "B",
+  "mem_hidden": 256,
+  "mem_layers": 2,
+  "rank": 8,
+  "chunk_size": 32,
+  "tbptt_chunks": 0,
+  "inner_lr": 0.2,
+  "inner_clip": 0.1,
+  "use_momentum": false,
+  "second_order": true,
+  "retention_bias": 4.0,
+  "retention_learned": true,
+  "aux_weight": 0.1,
+  "data_dir": "/data/miniTitan_data",
+  "types": "long_context,dialogue,agentic",
+  "val_per_type": 150,
+  "gen_eval_per_type": 48,
+  "seed": 0,
+  "batch_size": 4,
+  "steps": 800,
+  "lr": 0.001,
+  "warmup": 50,
+  "grad_clip": 1.0,
+  "log_every": 25,
+  "eval_every": 400,
+  "eval_batches": 12,
+  "gen_max_new": 32,
+  "save_ckpt": true,
+  "out_dir": "/vol/llm/g2a_mid"
+ },
+ "git_sha": "d940b4e-dirty",
+ "memory_params": 3902884,
+ "curve": [
+  {
+   "step": 25,
+   "nll": 3.2902892589569093,
+   "grad_norm": 1850.0584716796875,
+   "time_s": 12.035521984100342,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.3382809706187497,
+   "retention_halflife_tokens": 1275.0356080365093,
+   "state_norm_ratio": 0.20989739894866943,
+   "mean_blend": 0.7892144185801347,
+   "mean_surprise": 0.9025918232897917
+  },
+  {
+   "step": 50,
+   "nll": 3.1331199073791502,
+   "grad_norm": 654.0553588867188,
+   "time_s": 22.15600061416626,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.29282663895615507,
+   "retention_halflife_tokens": 1222.5875800484848,
+   "state_norm_ratio": 0.21272262930870056,
+   "mean_blend": 0.48717316878693445,
+   "mean_surprise": 0.938626843903746
+  },
+  {
+   "step": 75,
+   "nll": 3.2070540523529054,
+   "grad_norm": 18983.51953125,
+   "time_s": 31.919785737991333,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.3305634041316807,
+   "retention_halflife_tokens": 1326.563627289305,
+   "state_norm_ratio": 0.26158925890922546,
+   "mean_blend": 0.5914671057835221,
+   "mean_surprise": 1.4848512317985296
+  },
+  {
+   "step": 100,
+   "nll": 3.0707311248779297,
+   "grad_norm": 86529.0859375,
+   "time_s": 41.97239589691162,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.4362321190003838,
+   "retention_halflife_tokens": 1378.1110053596701,
+   "state_norm_ratio": 0.2948623299598694,
+   "mean_blend": 0.5905104795736926,
+   "mean_surprise": 1.8093509152531624
+  },
+  {
+   "step": 125,
+   "nll": 3.059460711479187,
+   "grad_norm": 35.941524505615234,
+   "time_s": 53.026650190353394,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.4830107893794775,
+   "retention_halflife_tokens": 1167.6891610612754,
+   "state_norm_ratio": 0.2744234502315521,
+   "mean_blend": 0.538668891042471,
+   "mean_surprise": 2.1503622114658354
+  },
+  {
+   "step": 150,
+   "nll": 3.2401023292541504,
+   "grad_norm": 5368.11865234375,
+   "time_s": 63.48220419883728,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.42271481334630934,
+   "retention_halflife_tokens": 801.9049950961361,
+   "state_norm_ratio": 0.2662575840950012,
+   "mean_blend": 0.42253160376900006,
+   "mean_surprise": 2.993587904742786
+  },
+  {
+   "step": 175,
+   "nll": 3.325766725540161,
+   "grad_norm": 89501.09375,
+   "time_s": 74.27252864837646,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.3951898972902979,
+   "retention_halflife_tokens": 1264.2141320083822,
+   "state_norm_ratio": 0.2872929871082306,
+   "mean_blend": 0.3610002774512395,
+   "mean_surprise": 3.2909069061279297
+  },
+  {
+   "step": 200,
+   "nll": 3.562570505142212,
+   "grad_norm": 28.94640350341797,
+   "time_s": 84.97924852371216,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.342879291420104,
+   "retention_halflife_tokens": 1340.5181074655766,
+   "state_norm_ratio": 0.2944081127643585,
+   "mean_blend": 0.08401106851266604,
+   "mean_surprise": 2.8907033437862992
+  },
+  {
+   "step": 225,
+   "nll": 3.419128670692444,
+   "grad_norm": 269.82965087890625,
+   "time_s": 95.05581021308899,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.38756930232048037,
+   "retention_halflife_tokens": 1205.4179390250993,
+   "state_norm_ratio": 0.2942278981208801,
+   "mean_blend": 0.07219724400579253,
+   "mean_surprise": 2.2884328216314316
+  },
+  {
+   "step": 250,
+   "nll": 3.3762034511566164,
+   "grad_norm": 1.6745721101760864,
+   "time_s": 105.47024512290955,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.4013799733365886,
+   "retention_halflife_tokens": 1242.4577308109092,
+   "state_norm_ratio": 0.31031355261802673,
+   "mean_blend": 0.15059389501887685,
+   "mean_surprise": 2.2177198827266693
+  },
+  {
+   "step": 275,
+   "nll": 3.3901289081573487,
+   "grad_norm": 115.88607025146484,
+   "time_s": 115.66792440414429,
+   "mem_gb": 8.660301824,
+   "mean_write_gate": 0.4133117528898375,
+   "retention_halflife_tokens": 1365.5042964542047,
+   "state_norm_ratio": 0.30588850378990173,
+   "mean_blend": 0.16803036244943673,
+   "mean_surprise": 2.355365709534713
+  },
+  {
+   "step": 300,
+   "nll": 3.341689500808716,
+   "grad_norm": 4480.54248046875,
+   "time_s": 126.13996267318726,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.4375449259366308,
+   "retention_halflife_tokens": 1488.688887240541,
+   "state_norm_ratio": 0.3169337511062622,
+   "mean_blend": 0.2766502346078466,
+   "mean_surprise": 2.006736248731613
+  },
+  {
+   "step": 325,
+   "nll": 3.1378535175323488,
+   "grad_norm": 12.535198211669922,
+   "time_s": 136.35549068450928,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.38954694792628286,
+   "retention_halflife_tokens": 1290.8257784885452,
+   "state_norm_ratio": 0.29921936988830566,
+   "mean_blend": 0.2427328539066366,
+   "mean_surprise": 2.50687195956707
+  },
+  {
+   "step": 350,
+   "nll": 3.2808927726745605,
+   "grad_norm": 395.5533447265625,
+   "time_s": 146.37827491760254,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.3978705681594355,
+   "retention_halflife_tokens": 1324.9354817280403,
+   "state_norm_ratio": 0.2980721592903137,
+   "mean_blend": 0.10788915973587011,
+   "mean_surprise": 2.97131220889943
+  },
+  {
+   "step": 375,
+   "nll": 3.2979900360107424,
+   "grad_norm": 2103.3896484375,
+   "time_s": 157.06218457221985,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.39606125047430396,
+   "retention_halflife_tokens": 1273.619108357424,
+   "state_norm_ratio": 0.3066670298576355,
+   "mean_blend": 0.38072542288955447,
+   "mean_surprise": 2.2836192715913057
+  },
+  {
+   "step": 400,
+   "nll": 3.1732217025756837,
+   "grad_norm": 35788.421875,
+   "time_s": 167.39295291900635,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.40415746040525846,
+   "retention_halflife_tokens": 1310.9281042037578,
+   "state_norm_ratio": 0.3058179020881653,
+   "mean_blend": 0.039042069421611814,
+   "mean_surprise": 2.1933093070983887
+  },
+  {
+   "step": 425,
+   "nll": 3.169306936264038,
+   "grad_norm": 7.591771602630615,
+   "time_s": 181.49136972427368,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.3794404744791488,
+   "retention_halflife_tokens": 1491.990565867409,
+   "state_norm_ratio": 0.29566240310668945,
+   "mean_blend": 0.12352220285530773,
+   "mean_surprise": 2.0515826071302095
+  },
+  {
+   "step": 450,
+   "nll": 3.021912727355957,
+   "grad_norm": 1856.6256103515625,
+   "time_s": 191.31413626670837,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.34131951816380024,
+   "retention_halflife_tokens": 1712.997475065442,
+   "state_norm_ratio": 0.31157076358795166,
+   "mean_blend": 0.32825707608208177,
+   "mean_surprise": 1.9003071710467339
+  },
+  {
+   "step": 475,
+   "nll": 2.945816602706909,
+   "grad_norm": 172.856689453125,
+   "time_s": 201.59023118019104,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.37928150525216814,
+   "retention_halflife_tokens": 1579.7971172167656,
+   "state_norm_ratio": 0.30028438568115234,
+   "mean_blend": 0.31477022997569293,
+   "mean_surprise": 1.8049317257744926
+  },
+  {
+   "step": 500,
+   "nll": 2.9583986377716065,
+   "grad_norm": 274.7373046875,
+   "time_s": 211.5668604373932,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.3569148893584497,
+   "retention_halflife_tokens": 1781.5612074042353,
+   "state_norm_ratio": 0.3076305389404297,
+   "mean_blend": 0.2349831317399662,
+   "mean_surprise": 2.0420744717121124
+  },
+  {
+   "step": 525,
+   "nll": 3.0332096290588377,
+   "grad_norm": 3216.398681640625,
+   "time_s": 222.52073431015015,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.3992872556700604,
+   "retention_halflife_tokens": 1575.8213964372148,
+   "state_norm_ratio": 0.32611751556396484,
+   "mean_blend": 0.07727129514387343,
+   "mean_surprise": 2.0125488843768835
+  },
+  {
+   "step": 550,
+   "nll": 3.079535894393921,
+   "grad_norm": 77.57797241210938,
+   "time_s": 232.66523385047913,
+   "mem_gb": 8.741443584,
+   "mean_write_gate": 0.2850932542101613,
+   "retention_halflife_tokens": 1831.6468608505857,
+   "state_norm_ratio": 0.3122348189353943,
+   "mean_blend": 0.3524230511726013,
+   "mean_surprise": 1.995757700077125
+  },
+  {
+   "step": 575,
+   "nll": 2.8989032649993898,
+   "grad_norm": 3.6618199348449707,
+   "time_s": 243.58181834220886,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.28696793466806414,
+   "retention_halflife_tokens": 2010.9533158246822,
+   "state_norm_ratio": 0.3114446699619293,
+   "mean_blend": 0.3484121438003058,
+   "mean_surprise": 2.1079029753804206
+  },
+  {
+   "step": 600,
+   "nll": 3.385097608566284,
+   "grad_norm": 5616.6669921875,
+   "time_s": 253.90969681739807,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.32781616219186355,
+   "retention_halflife_tokens": 1742.2009717016629,
+   "state_norm_ratio": 0.3103848993778229,
+   "mean_blend": 0.35147720093144535,
+   "mean_surprise": 2.110350893012115
+  },
+  {
+   "step": 625,
+   "nll": 3.226579270362854,
+   "grad_norm": 7.484764099121094,
+   "time_s": 264.63131403923035,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.3680795579816082,
+   "retention_halflife_tokens": 1802.8837018300276,
+   "state_norm_ratio": 0.31823042035102844,
+   "mean_blend": 0.2660624525727014,
+   "mean_surprise": 2.0576656801359996
+  },
+  {
+   "step": 650,
+   "nll": 3.1540275859832763,
+   "grad_norm": 20.837583541870117,
+   "time_s": 274.3267397880554,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.2909706147121532,
+   "retention_halflife_tokens": 1655.03168868751,
+   "state_norm_ratio": 0.3111039400100708,
+   "mean_blend": 0.43719543454842225,
+   "mean_surprise": 2.3358236561928476
+  },
+  {
+   "step": 675,
+   "nll": 2.9328614044189454,
+   "grad_norm": 454.8932189941406,
+   "time_s": 284.36256861686707,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.3307278374143477,
+   "retention_halflife_tokens": 1651.035287568798,
+   "state_norm_ratio": 0.31140488386154175,
+   "mean_blend": 0.348578417016792,
+   "mean_surprise": 2.1030361599155833
+  },
+  {
+   "step": 700,
+   "nll": 2.9297647666931153,
+   "grad_norm": 2.8782098293304443,
+   "time_s": 294.83891701698303,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.2840871176837633,
+   "retention_halflife_tokens": 1589.6312911347336,
+   "state_norm_ratio": 0.30524876713752747,
+   "mean_blend": 0.4342236031140298,
+   "mean_surprise": 2.627049865821997
+  },
+  {
+   "step": 725,
+   "nll": 2.7745531845092772,
+   "grad_norm": 14.950959205627441,
+   "time_s": 305.33071732521057,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.26906897792858736,
+   "retention_halflife_tokens": 1633.2607562715918,
+   "state_norm_ratio": 0.30708569288253784,
+   "mean_blend": 0.43421245061160463,
+   "mean_surprise": 2.3906674704381397
+  },
+  {
+   "step": 750,
+   "nll": 2.8607201910018922,
+   "grad_norm": 327.49688720703125,
+   "time_s": 315.9000024795532,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.37697050351250383,
+   "retention_halflife_tokens": 1607.5961471615626,
+   "state_norm_ratio": 0.3153659999370575,
+   "mean_blend": 0.2864363694804654,
+   "mean_surprise": 2.2619993165135384
+  },
+  {
+   "step": 775,
+   "nll": 2.9048101329803466,
+   "grad_norm": 664.9876098632812,
+   "time_s": 326.8563423156738,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.33346993077014175,
+   "retention_halflife_tokens": 1483.2982184712102,
+   "state_norm_ratio": 0.31181809306144714,
+   "mean_blend": 0.3034064177939269,
+   "mean_surprise": 2.3517859812293733
+  },
+  {
+   "step": 800,
+   "nll": 2.9511687755584717,
+   "grad_norm": 1410.5042724609375,
+   "time_s": 337.2529683113098,
+   "mem_gb": 8.960234496,
+   "mean_write_gate": 0.2729689083727343,
+   "retention_halflife_tokens": 1493.5403849030824,
+   "state_norm_ratio": 0.3053920567035675,
+   "mean_blend": 0.3240935511392057,
+   "mean_surprise": 2.7601716380034174
+  }
+ ],
+ "quick_eval": [
+  {
+   "step": 400,
+   "none": 3.3800405100280164,
+   "on": 3.0502139832459245
+  }
+ ],
+ "final": {
+  "long_context": {
+   "n_val": 150,
+   "nll": {
+    "none": 3.7006261414289474,
+    "off": 5.409909501473109,
+    "on": 3.063379852374395,
+    "oracle": 0.6307274988542001
+   },
+   "ppl": {
+    "none": 40.47263802341688,
+    "off": 223.61135026703653,
+    "on": 21.399763110728152,
+    "oracle": 1.8789770357969058
+   },
+   "nll_gain_on_vs_none": 0.6372462890545525,
+   "nll_gain_on_vs_off": 2.346529649098714,
+   "nll_by_n_segments": {
+    "5": {
+     "none": 3.7330288600038597,
+     "off": 5.477560864554511,
+     "on": 3.0901096628771887,
+     "oracle": 0.649529045516694,
+     "count": 54
+    },
+    "6": {
+     "none": 3.688566064025149,
+     "off": 5.372701392497546,
+     "on": 3.0554712863616,
+     "oracle": 0.5957055737114982,
+     "count": 81
+    },
+    "7": {
+     "none": 3.8840877551298876,
+     "off": 5.591691383948693,
+     "on": 3.238749696658208,
+     "oracle": 0.7751072324239291,
+     "count": 13
+    },
+    "8": {
+     "none": 2.1216853857040405,
+     "off": 3.908668875694275,
+     "on": 1.522067904472351,
+     "oracle": 0.603005439043045,
+     "count": 2
+    }
+   },
+   "nll_by_fact_position": {
+    "early": {
+     "none": 3.7334980534768736,
+     "off": 5.415488454620395,
+     "on": 3.0945860885940824,
+     "oracle": 0.6281584592585543,
+     "count": 113
+    },
+    "late": {
+     "none": 3.409603633663871,
+     "off": 5.130477005785162,
+     "on": 2.79303484342315,
+     "oracle": 0.6331824639981444,
+     "count": 22
+    },
+    "middle": {
+     "none": 3.879824082056681,
+     "off": 5.777715714772542,
+     "on": 3.224798885981242,
+     "oracle": 0.64648031493028,
+     "count": 15
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.029678207493448724
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.042651541292845645
+    },
+    "oracle": {
+     "em": 0.16666666666666666,
+     "contains": 0.6875,
+     "f1": 0.33495762358656084
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "1809"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The desalination plant desperately needed to replace a corroded intake manifold."
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the chemical concentration reading from Sec"
+     }
+    ],
+    "on": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "1862"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The intake manifold"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "0.00000000000000000000000000000"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "Elias Vogt was recognized for his service on November 2, 1940, from the naval ba"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The specific part that the desalination plant desperately needed to replace a co"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the titanium dioxide reading at 3.1 ppm as "
+     }
+    ]
+   }
+  },
+  "dialogue": {
+   "n_val": 150,
+   "nll": {
+    "none": 2.439178774754206,
+    "off": 3.489684190750122,
+    "on": 2.2605255345503488,
+    "oracle": 1.138861890733242
+   },
+   "ppl": {
+    "none": 11.463622659803894,
+    "off": 32.7755952354693,
+    "on": 9.588126734812672,
+    "oracle": 3.123211785406835
+   },
+   "nll_gain_on_vs_none": 0.17865324020385742,
+   "nll_gain_on_vs_off": 1.2291586561997732,
+   "nll_by_n_segments": {
+    "2": {
+     "none": 1.947391390800476,
+     "off": 2.273195743560791,
+     "on": 1.665268063545227,
+     "oracle": 0.6692619323730469,
+     "count": 1
+    },
+    "3": {
+     "none": 2.4048209159644607,
+     "off": 3.4551192165650044,
+     "on": 2.2305260958130826,
+     "oracle": 1.1277686183907323,
+     "count": 97
+    },
+    "4": {
+     "none": 2.524858757853508,
+     "off": 3.571477845311165,
+     "on": 2.331829988708099,
+     "oracle": 1.1550591730823119,
+     "count": 48
+    },
+    "5": {
+     "none": 2.524608055750529,
+     "off": 4.067415078481038,
+     "on": 2.4146182934443154,
+     "oracle": 1.344504177570343,
+     "count": 3
+    },
+    "7": {
+     "none": 1.8947514295578003,
+     "off": 2.3996870517730713,
+     "on": 1.8808364868164062,
+     "oracle": 1.290112853050232,
+     "count": 1
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.38119517099574796
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.41235613372909863
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.4877682369582053
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a new car, and the insurance appraiser had to go to i"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set up the system at home and log in with their user ID and pa"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on a medical condition that is not cover"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a 2018 Ford Focus. The insurance appraiser had to go "
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to log in as 'admin' and set the baseline alert threshold to 100 "
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focused on a rare genetic disorder affecting the "
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and "
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set their ID for the system to log in at home, and the specifi"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on Type 2 diabetes, and the strict budge"
+     }
+    ]
+   }
+  },
+  "agentic": {
+   "n_val": 150,
+   "nll": {
+    "none": 4.430329119364421,
+    "off": 4.041536140441894,
+    "on": 3.730746944745382,
+    "oracle": 2.42570130387942
+   },
+   "ppl": {
+    "none": 83.95904491106293,
+    "off": 56.913703130502725,
+    "on": 41.710251784698535,
+    "oracle": 11.310158496638794
+   },
+   "nll_gain_on_vs_none": 0.6995821746190392,
+   "nll_gain_on_vs_off": 0.31078919569651253,
+   "nll_by_n_segments": {
+    "2": {
+     "none": 4.589234381914139,
+     "off": 4.148375824093819,
+     "on": 3.840093970298767,
+     "oracle": 2.438976839184761,
+     "count": 32
+    },
+    "3": {
+     "none": 4.463240502828575,
+     "off": 4.0556374601570955,
+     "on": 3.748046518808388,
+     "oracle": 2.3937464528773202,
+     "count": 83
+    },
+    "4": {
+     "none": 4.293344314893087,
+     "off": 3.990148123105367,
+     "on": 3.6621230920155843,
+     "oracle": 2.5409588774045306,
+     "count": 30
+    },
+    "5": {
+     "none": 3.794605811436971,
+     "off": 3.5648529529571533,
+     "on": 3.3834876219431558,
+     "oracle": 2.2537460327148438,
+     "count": 3
+    },
+    "6": {
+     "none": 3.5303795337677,
+     "off": 3.2327414751052856,
+     "on": 2.813508987426758,
+     "oracle": 2.068488359451294,
+     "count": 2
+    }
+   },
+   "pref_acc": {
+    "none": 0.3933333333333333,
+    "off": 0.5666666666666667,
+    "on": 0.6066666666666667,
+    "oracle": 0.8066666666666666
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.21081297989458173
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.22012140111002423
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.2350030716674497
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to continue the process of increasing the number of peop"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the process of adding the two numbers togeth"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue the process of adding the two numbers togeth"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "Execute the 'docker pull' command to pull the 'ubuntu-latest' image from the Doc"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "Use the 'get' function from the 'aws_lambda' module to execute the 'update-iam-p"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "Execute the 'get-aws-ec2-instance-id' command from step 1 to find the 'ec2-insta"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to release the lock on the ML_OPS.EXPERIMENT_LOGS table "
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the backup restoration process by using the "
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue with the test suite and execute the live fai"
+     }
+    ]
+   }
+  }
+ },
+ "skipped_nonfinite_steps": 0,
+ "train_time_s": 337.25325870513916,
+ "wall_time_s": 773.0548934936523,
+ "peak_gpu_gb": 8.960234496,
+ "versions": {
+  "torch": "2.15.0+cu132",
+  "transformers": "5.22.2"
+ }
+}

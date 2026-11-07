@@ -41,7 +41,8 @@ def _memory_config(cfg: ExpConfig, model: str) -> MemoryConfig:
         dim=cfg.dim, mem_hidden=cfg.mem_hidden, mem_layers=cfg.mem_layers, rank=cfg.rank,
         chunk_size=cfg.chunk_size, mode="A" if model == "titan_a" else "B",
         tbptt_chunks=cfg.tbptt_chunks or None, inner_lr=cfg.inner_lr, inner_clip=cfg.inner_clip,
-        use_momentum=cfg.use_momentum, second_order=cfg.second_order, aux_lag_chunks=cfg.aux_lag_chunks)
+        use_momentum=cfg.use_momentum, second_order=cfg.second_order, aux_lag_chunks=cfg.aux_lag_chunks,
+        retention_bias=cfg.retention_bias, retention_learned=cfg.retention_learned)
 
 
 def titan_core_params(cfg: ExpConfig, model: str) -> int:
@@ -120,13 +121,18 @@ def query_acc_loss(logits, b):
 
 
 @torch.no_grad()
-def evaluate(model: Host, cfg: ExpConfig, task: Task, device) -> dict:
-    """Accuracy per eval label; for the stream task also per age bucket ('<label>|age=<bucket>')."""
+def evaluate(model: Host, cfg: ExpConfig, task: Task, device):
+    """Returns (grid, diag). grid: accuracy per eval label (stream task: also per age bucket '<label>|age=<bucket>').
+    diag: per eval label, mean memory diagnostics (write gate, median-chunk half-life, state/weight norm ratio)."""
     model.eval()
+    diag_acc = defaultdict(lambda: defaultdict(list))
     gen = torch.Generator().manual_seed(12345)           # fixed eval set across runs/models
     tally = defaultdict(lambda: [0, 0])                  # key -> [correct, total]
     for label, b in task.eval_items(cfg.batch_size, gen, device, cfg.eval_batches):
-        logits, _, _ = model(b)
+        logits, _, met = model(b)
+        for k_ in ("mean_surprise", "mean_write_gate", "retention_halflife_tokens", "state_norm_ratio"):
+            if k_ in met:
+                diag_acc[label][k_].append(met[k_])
         q = b["qmask"]
         correct = (logits[q].argmax(-1) == b["target"][q]).float()
         tally[label][0] += correct.sum().item()
@@ -140,7 +146,8 @@ def evaluate(model: Host, cfg: ExpConfig, task: Task, device) -> dict:
                     t[0] += correct[m].sum().item()
                     t[1] += int(m.sum())
     model.train()
-    return {k: c / t for k, (c, t) in tally.items()}
+    diag = {lab: {k_: sum(v) / len(v) for k_, v in d.items()} for lab, d in diag_acc.items()}
+    return {k: c / t for k, (c, t) in tally.items()}, diag
 
 
 def git_sha() -> str:
@@ -170,7 +177,7 @@ def run_experiment(cfg: ExpConfig, device: Optional[str] = None, verbose: bool =
     curve, evals, t0 = [], [], time.time()
     run_loss, run_acc, run_met, skipped = [], [], {}, 0
     for step in range(1, cfg.steps + 1):
-        b = task.train_batch(cfg.batch_size, gen, device)
+        b = task.train_batch(cfg.batch_size, gen, device, progress=(step - 1) / max(cfg.steps, 1))
         logits, aux, met = model(b)
         ce, acc = query_acc_loss(logits, b)
         loss = ce + cfg.aux_weight * aux
@@ -197,14 +204,15 @@ def run_experiment(cfg: ExpConfig, device: Optional[str] = None, verbose: bool =
                 ex = "  ".join(f"{k.replace('mean_', '')}={v:.3f}" for k, v in run_met.items())
                 print(f"step {step:5d}  ce {row['ce']:.3f}  acc {row['acc']:.3f}  aux {row['aux']:.3f}  {ex}")
         if step % cfg.eval_every == 0 or step == cfg.steps:
-            ev = evaluate(model, cfg, task, device)
-            evals.append({"step": step, "grid": ev})
+            ev, dg = evaluate(model, cfg, task, device)
+            evals.append({"step": step, "grid": ev, "diag": dg})
             if verbose:
                 print(f"  eval@{step}: " + "  ".join(f"{k}:{v:.2f}" for k, v in ev.items() if "|" not in k))
 
     result = {"config": asdict(cfg), "git_sha": sha or git_sha(), "params": params, "chance": chance,
               "device": device, "wall_time_s": time.time() - t0, "skipped_nonfinite_steps": skipped,
-              "curve": curve, "evals": evals, "final_grid": evals[-1]["grid"] if evals else {}}
+              "curve": curve, "evals": evals, "final_grid": evals[-1]["grid"] if evals else {},
+              "final_diag": evals[-1]["diag"] if evals else {}}
     if cfg.model == "gru":
         result["gru_hidden"] = model.gru_hidden
     return (result, model) if return_model else result

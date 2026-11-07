@@ -4,6 +4,7 @@ The values are never printed or logged; only MODAL_TOKEN_ID / MODAL_TOKEN_SECRET
 
   python ResearchWork/launch.py sweep smoke                  # = modal run ResearchWork/modal_app.py --sweep smoke
   python ResearchWork/launch.py sweep p1_stream --seeds 0,1 --force
+  python ResearchWork/launch.py llm smoke                     # Phase 2: frozen LLM + memory on a Modal GPU (see modal_llm.py)
   python ResearchWork/launch.py check                         # run memory_module_v4 sanity suite on Modal
   python ResearchWork/launch.py profile                       # check that the credentials work (modal profile current)
   python ResearchWork/launch.py <any modal CLI args>          # e.g.  volume ls minititan-results
@@ -46,6 +47,8 @@ def main(argv):
 
     if argv and argv[0] == "sweep":
         args = ["run", os.path.join("ResearchWork", "modal_app.py") + "::main", "--sweep", *argv[1:]]
+    elif argv and argv[0] == "llm":
+        args = ["run", os.path.join("ResearchWork", "modal_llm.py") + "::main", "--run", *argv[1:]]
     elif argv and argv[0] == "check":
         args = ["run", os.path.join("ResearchWork", "modal_app.py") + "::checks"]
     elif argv and argv[0] == "profile":

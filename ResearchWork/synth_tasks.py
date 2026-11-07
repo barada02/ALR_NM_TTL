@@ -38,7 +38,7 @@ class Task:
     n_vals = 0
     n_filler = 0
 
-    def train_batch(self, B: int, gen: torch.Generator, device) -> Dict[str, torch.Tensor]:
+    def train_batch(self, B: int, gen: torch.Generator, device, progress: float = 1.0) -> Dict[str, torch.Tensor]:
         raise NotImplementedError
 
     def eval_items(self, B: int, gen: torch.Generator, device, n_batches: int
@@ -89,7 +89,7 @@ class TypedTask(Task):
         return _pack(device, typ=typ, key_id=key_id, val_id=val_id, fil_id=fil_id,
                      target=target, qmask=typ == QUERY, age=age)
 
-    def train_batch(self, B, gen, device):
+    def train_batch(self, B, gen, device, progress=1.0):
         fl = int(torch.randint(0, self.train_filler_max + 1, (1,), generator=gen))
         return self.batch(B, self.n_pairs, fl, gen, device)
 
@@ -110,6 +110,7 @@ class StreamTask(Task):
         self.n_filler = 1                                    # unused (null row only)
         self.n_queries = cfg.n_queries
         self.train_min, self.train_max = cfg.train_facts_min, cfg.train_facts_max
+        self.curriculum = cfg.curriculum
         self.eval_facts = [int(x) for x in cfg.eval_facts.split(",")]
         assert max(self.eval_facts + [self.train_max]) + self.C <= self.n_keys, "need n_keys ≥ max facts (+ pad)"
 
@@ -138,8 +139,11 @@ class StreamTask(Task):
         return _pack(device, typ=typ, key_id=key_id, val_id=val_id, fil_id=fil_id,
                      target=target, qmask=qmask, age=age)
 
-    def train_batch(self, B, gen, device):
-        n = int(torch.randint(self.train_min, self.train_max + 1, (1,), generator=gen))
+    def train_batch(self, B, gen, device, progress=1.0):
+        hi = self.train_max
+        if self.curriculum > 0:                              # ramp the longest distance over `curriculum` of training
+            hi = self.train_min + round((self.train_max - self.train_min) * min(1.0, progress / self.curriculum))
+        n = int(torch.randint(self.train_min, max(hi, self.train_min) + 1, (1,), generator=gen))
         return self.batch(B, n, gen, device)
 
     def eval_items(self, B, gen, device, n_batches):

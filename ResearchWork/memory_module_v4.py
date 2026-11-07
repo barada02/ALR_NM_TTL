@@ -51,6 +51,9 @@ class MemoryConfig:
     mode: str = "A"                  # "A" = learned update rule, "B" = gradient update (Titans)
     tbptt_chunks: Optional[int] = 4  # detach state every N chunks; None = full BPTT
     retention_bias: float = 4.0      # σ(4)=0.982 per chunk at init (remember-by-default)
+    retention_learned: bool = True   # False → ρ = σ(retention_bias) constant, gate frozen (ablation)
+    input_norm: bool = False         # RMS-normalise the hidden state the memory *sees* (k/v/gates); the residual
+                                     # stream it adds into is untouched. Needed for LLM hidden states (huge outlier dims).
     # Mode B
     inner_lr: float = 0.2            # θ scale (multiplied by learned write gate ∈ (0,1)); see stability note
     inner_clip: float = 0.1          # per-sequence, per-layer: ‖step‖ ≤ inner_clip·‖W_base‖  (0 disables)
@@ -133,12 +136,16 @@ class SurpriseGate(nn.Module):
 class RetentionGate(nn.Module):
     """Chunk-level ρ ∈ (0,1) from the chunk's mean hidden state. Bias init → remember by default."""
 
-    def __init__(self, dim: int, bias_init: float):
+    def __init__(self, dim: int, bias_init: float, learned: bool = True):
         super().__init__()
         self.net = nn.Sequential(nn.Linear(dim, max(dim // 4, 8)), nn.GELU(),
                                  nn.Linear(max(dim // 4, 8), 1))
         nn.init.normal_(self.net[-1].weight, std=1e-3)
         nn.init.constant_(self.net[-1].bias, bias_init)
+        if not learned:                       # constant ρ = σ(bias): zero last weight + freeze everything
+            nn.init.zeros_(self.net[-1].weight)
+            for p in self.net.parameters():
+                p.requires_grad_(False)
 
     def forward(self, h_mean: torch.Tensor) -> torch.Tensor:
         return torch.sigmoid(self.net(h_mean))  # (B,1)
@@ -207,7 +214,7 @@ class MiniTitanMemoryModule(nn.Module):
         self.memory = BatchedMemoryMLP(d, cfg.mem_hidden, cfg.mem_layers)
         self.kv = KeyValueProjection(d)
         self.surprise_gate = SurpriseGate(d)
-        self.retention_gate = RetentionGate(d, cfg.retention_bias)
+        self.retention_gate = RetentionGate(d, cfg.retention_bias, cfg.retention_learned)
         self.blend_gate = MemoryBlendGate(d)
         self.W_o = nn.Linear(d, d, bias=False)
         nn.init.zeros_(self.W_o.weight)
@@ -323,7 +330,8 @@ class MiniTitanMemoryModule(nn.Module):
         since_detach = 0
 
         for s in range(0, T, cfg.chunk_size):
-            h = hidden[:, s:s + cfg.chunk_size]                              # (B,c,d)
+            h_raw = hidden[:, s:s + cfg.chunk_size]                          # (B,c,d)  residual stream
+            h = rms_norm(h_raw) if cfg.input_norm else h_raw                 # what the memory sees
             m = None if write_mask is None else \
                 write_mask[:, s:s + cfg.chunk_size].to(h.dtype).unsqueeze(-1)  # (B,c,1)
             k, v = self.kv(h)
@@ -345,7 +353,7 @@ class MiniTitanMemoryModule(nn.Module):
                     hist.append((k, v.detach(), m))
 
             blend = self.blend_gate(h, read)
-            outs.append(h + blend * self.W_o(read))
+            outs.append(h_raw + blend * self.W_o(read))
 
             if update_memory:
                 self._delta, self._mom = new_delta, new_mom
@@ -427,6 +435,12 @@ def _run_checks():
         out, met, aux = mod(h)
         assert torch.equal(out, h), "module must be identity at init"
     print("2. identity at init (both modes)                         OK")
+    mod = mk("B", input_norm=True)
+    h = torch.randn(B, T, d) * 50 + 7            # large-scale, offset input like LLM hidden states
+    mod.reset_memory()
+    out, met, _ = mod(h)
+    assert torch.equal(out, h) and math.isfinite(met["mean_surprise"])
+    print("2b. input_norm: identity at init, scale-robust            OK")
 
     # 3. Mode A: gradient paths. Main-loss path (future read) AND aux path.
     mod = mk("A")
@@ -497,6 +511,13 @@ def _run_checks():
     assert abs(got - expect) / expect < 1e-3, (got, expect)
     print(f"6. dense horizon: {steps} chunks ({steps*C} tokens) → ‖ΔW‖ ratio {got:.3f} "
           f"== Πρ {expect:.3f}   OK  (v3 would be fully evicted after 4)")
+
+    # 6b. fixed retention: ρ is exactly σ(bias) on every chunk and the gate has no trainable parameters
+    mod = mk("B", retention_bias=8.0, retention_learned=False)
+    _, met, _ = mod(torch.randn(B, T, d))
+    assert all(abs(r - torch.sigmoid(torch.tensor(8.0)).item()) < 1e-5 for r in met["per_chunk"]["retention"])
+    assert not any(p.requires_grad for p in mod.retention_gate.parameters())
+    print("6b. fixed retention ρ = σ(bias), gate frozen             OK")
 
     # 7. Mode B one-shot write: re-reading identical keys after a write lowers surprise
     mod = mk("B")

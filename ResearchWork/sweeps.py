@@ -100,6 +100,72 @@ def abl_inner_lr(seeds):
     return _grid("abl_inner_lr", v, seeds, {**STREAM, **HOSTS["titan_b"]})
 
 
+# ── retention round: why does Mode B lose facts written long ago? ─────────────
+# Baseline = p1_stream/titan_b (0.99 / 0.70 / 0.43 at 64 / 256 / 512 facts; accuracy by age 0.73 → 0.23).
+# Hypotheses: (a) never trained beyond ~4 chunks, (b) memory too small / interference, (c) inner_clip throttles
+# writes (16 facts share one clipped step), (d) chunk too coarse, (e) decay too aggressive.
+
+def ret_dist(seeds):
+    """(a) train on longer streams, with and without a longer TBPTT window."""
+    v = {"base": {},
+         "train128": dict(train_facts_max=128), "train256": dict(train_facts_max=256),
+         "train128_w8": dict(train_facts_max=128, tbptt_chunks=8), "train256_w8": dict(train_facts_max=256, tbptt_chunks=8)}
+    return _grid("ret_dist", v, seeds, {**STREAM, **HOSTS["titan_b"]})
+
+
+def ret_capacity(seeds):
+    """(b) bigger memory MLP."""
+    v = {"hid256": dict(mem_hidden=256), "hid512": dict(mem_hidden=512), "hid256_L3": dict(mem_hidden=256, mem_layers=3)}
+    return _grid("ret_capacity", v, seeds, {**STREAM, **HOSTS["titan_b"]})
+
+
+def ret_clip(seeds):
+    """(c) loosen / tighten the Mode B step clip (stability vs write strength)."""
+    v = {f"clip{c}": dict(inner_clip=c) for c in (0.05, 0.3, 1.0)}
+    return _grid("ret_clip", v, seeds, {**STREAM, **HOSTS["titan_b"]})
+
+
+def ret_chunk(seeds):
+    """(d) finer / coarser write granularity (TBPTT window kept ≈ 64 tokens)."""
+    v = {"c8_w8": dict(chunk_size=8, tbptt_chunks=8), "c32_w2": dict(chunk_size=32, tbptt_chunks=2)}
+    return _grid("ret_chunk", v, seeds, {**STREAM, **HOSTS["titan_b"]})
+
+
+def ret_decay(seeds):
+    """(e) retention: higher init, or frozen at a near-1 constant (no learned forgetting)."""
+    v = {"bias6": dict(retention_bias=6.0), "bias8": dict(retention_bias=8.0),
+         "fixed_bias8": dict(retention_bias=8.0, retention_learned=False),
+         "fixed_bias4": dict(retention_bias=4.0, retention_learned=False)}
+    return _grid("ret_decay", v, seeds, {**STREAM, **HOSTS["titan_b"]})
+
+
+def ret_bptt(seeds):
+    """Full BPTT (no detach) and coarse chunks. Decides the LLM training recipe: a long-context fact sits 80+
+    chunks before its question, far beyond any TBPTT window, so gradient can only reach the write if BPTT is long."""
+    v = {"train256_full": dict(train_facts_max=256, tbptt_chunks=0),
+         "c64_w4": dict(chunk_size=64, tbptt_chunks=4, train_facts_min=64, train_facts_max=256),
+         "c64_full": dict(chunk_size=64, tbptt_chunks=0, train_facts_min=64, train_facts_max=256)}
+    return _grid("ret_bptt", v, seeds, {**STREAM, **HOSTS["titan_b"]})
+
+
+def ret_combo(seeds):
+    """Confirmation: combine what helped (long horizon, small step clip, no momentum) and cure take-off with a curriculum."""
+    base = {**STREAM, **HOSTS["titan_b"], "use_momentum": False, "train_facts_max": 256}
+    v = {"full256_nocur": dict(tbptt_chunks=0),
+         "full256_cur": dict(tbptt_chunks=0, curriculum=0.5),
+         "full256_cur_clip05": dict(tbptt_chunks=0, curriculum=0.5, inner_clip=0.05),
+         "w8_256_cur": dict(tbptt_chunks=8, curriculum=0.5),
+         "w8_256_cur_clip05": dict(tbptt_chunks=8, curriculum=0.5, inner_clip=0.05)}
+    return _grid("ret_combo", v, seeds, base)
+
+
+RETENTION = [ret_dist, ret_capacity, ret_clip, ret_chunk, ret_decay]   # ret_bptt is standalone (launched separately)
+
+
+def ret_all(seeds):
+    return [c for f in RETENTION for c in f(seeds)]
+
+
 ABLATIONS = [abl_b_mask, abl_momentum, abl_second_order, abl_rank, abl_tbptt, abl_aux, abl_inner_lr]
 
 
@@ -112,7 +178,7 @@ def all_p1(seeds):
 
 
 SWEEPS: Dict[str, Callable] = {f.__name__: f for f in
-                               [smoke, p1_typed, p1_stream, all_p1, *ABLATIONS, abl_all]}
+                               [smoke, p1_typed, p1_stream, all_p1, *ABLATIONS, abl_all, *RETENTION, ret_all, ret_bptt, ret_combo]}
 
 
 def build_sweep(name: str, seeds: Optional[Iterable[int]] = None) -> List[ExpConfig]:
