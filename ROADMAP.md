@@ -62,22 +62,20 @@ markmap:
 
 ## Phase 2 — Frozen-LLM integration ☁️
 - Segmented pipeline (the information bottleneck)
-  - ⬜ Base model attends only within current segment (~256 tok)
-  - ⬜ Memory = only cross-segment channel
-  - ⬜ Map data to segments: dialogue turns, agentic steps, context chunks
+  - ✅ Base model attends only within current segment (256 tok; segments run as independent sequences)
+  - ✅ Memory = only cross-segment channel (forward hook on one layer)
+  - ✅ Map data to segments: context chunks → segments, question+answer → final segment (dialogue/agentic rendered to text)
 - Insertion-point branches
-  - Branch I1 — last-layer residual delta + frozen lm_head (MAL-style)
-  - Branch I2 — mid-layer inject, re-run remaining frozen layers (MAC-style)
-  - 🚪 GATE 2a: two short runs on Qwen2-0.5B decide
-- Trainer rewrite (train_kaggle v2)
-  - ⬜ port to v4 module (metric keys, aux loss term)
-  - ⬜ fix step_in_session counter (optimizer never steps)
-  - ⬜ shuffled train/val split (seeded)
-  - ⬜ single-tokenization label boundary
-  - ⬜ autoregressive needle eval (generate after "Answer:", not prompt logits)
-  - ⬜ clean baseline: frozen base w/o memory module (not update_memory=False confound)
-- ⬜ Local smoke test: Qwen2-0.5B, seq 128, batch 1 🖥️
-- 🚪 GATE 2b: with-memory beats frozen base on segmented needle @ 2–4 segments
+  - Branch I1 — last-layer residual delta + frozen lm_head (MAL-style): ❌ no gain
+  - Branch I2 — mid-layer inject, re-run remaining frozen layers (MAC-style): ✅ better NLL (layer 8/12/16 all equal)
+  - ✅ 🚪 GATE 2a: mid + TBPTT 8 chunks (full BPTT: gradient norms up to 1e9, worse)
+- Trainer rewrite (llm_train.py)
+  - ✅ v4 module, optimizer steps, shuffled seeded split, exact answer boundary, autoregressive generation eval, honest baselines
+  - ✅ eval modes none / off / swap / on / oracle; agentic preference scoring; breakdown by fact position and #segments
+- ❌ 🚪 GATE 2b NOT PASSED: memory beats the frozen base, but a *different* document gives the same gain (swap ≈ on): 95–99% of the gain is
+  generic adaptation; document-specific gain 0.01–0.08 nats; exact-match recall 0.02 (oracle 0.69)
+- ⬜ Fix the training signal: contrastive swap loss · document-length curriculum · crop-around-fact curriculum · judge by swap→on
+- ⬜ Then re-run Stage A/B (3 seeds) and re-test Gate 2b
 
 ## Phase 3 — Scale & characterize ☁️ multi-session
 - ⬜ Qwen2-1.5B + full 30K dataset (data_generation/ output)
@@ -115,3 +113,5 @@ markmap:
 - phase1: ranking FLIPS between typed (A ≈1.00 > B) and stream (B ≫ A) → the typed testbed rewarded type-based gating, not memory quality
 - phase1: Mode B needs second-order grads and TBPTT ≥ 4 chunks; ~1 in 15 runs never takes off (CE pinned at ln 32 = 3.47)
 - bug found on Modal: first-order Mode B crashed (autograd.grad without retain_graph) — sanity suite missed it; now covered (check 4b)
+- LLM (Qwen2-0.5B, mid-layer memory, 8 variants): NLL 3.70→2.3 but swap≈on → generic adaptation, not recall; lr 3e-3 never takes off; layer/width/clip/window don't matter
+- LLM eval lesson: `off` (starved memory) is worse than none; `swap` (wrong document) is the control that separates recall from adaptation; agentic preference accuracy is a style artifact

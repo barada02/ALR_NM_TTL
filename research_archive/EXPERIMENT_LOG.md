@@ -10,10 +10,11 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
   - **Mode B (gradient update, momentum optional) is the chosen branch.** Mode A (learned update rule) is parked.
 - **Synthetic evidence (3 seeds):** Mode B ≫ matched GRU ≫ no memory on the hard `stream` task. The "retention problem" was really a
   *training-horizon* problem: long BPTT + a distance **curriculum** + small step clip lifts acc@512 facts 0.43 → 0.69 (E6).
-- **LLM evidence (1 seed, 800 steps):** memory injected at the **middle layer** of frozen Qwen2-0.5B, TBPTT window 8 chunks, cuts
-  long-context answer NLL 3.70 → 2.46 and lifts agentic preference accuracy 0.39 → 0.76 (full-context oracle 0.81). Exact-match recall not yet there (E7).
+- **LLM evidence (Qwen2-0.5B, 8 variants, 1 seed): memory does NOT yet recall documents.** Mid-layer injection cuts answer NLL 3.70 → ~2.3, but a
+  *different* document gives the same result (swap ≈ on): **95–99% of the gain is generic answer-style adaptation, 2–5% is document-specific** (E7).
+  Gate 2b (memory beats frozen base *because of the document*) is **not passed**.
 - **Where things run:** everything on **Modal** (`launch.py`). Do not run models locally.
-- **Next:** E7 stage A (8 LLM variants, running) → stage B (best config × 3 seeds, longer). Open idea: document-length curriculum for the LLM.
+- **Next (proposed, not started):** make the shortcut unprofitable — contrastive swap loss, document-length curriculum, crop-around-fact (see E7 "Next").
 
 ## Run things
 
@@ -64,7 +65,7 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E4 | Phase 1: A vs B vs matched GRU (`p1_typed`, `p1_stream`) | typed: A 1.00 > B 0.63–0.85 @512 filler. **stream: B 0.99/0.70/0.43 @64/256/512 facts; A 0.70/0.07/0.04; GRU ≤0.13** | **Gate 1: Mode B.** Ranking flips ⇒ typed task rewarded token-type gating |
 | E5 | Ablations (`abl_*`, 78 runs) | B needs 2nd-order grads (1st-order = chance) and TBPTT ≥4 chunks; momentum no help; A needs aux loss, rank/delayed-aux irrelevant; masking filler writes does *not* fix B (hypothesis refuted); ~1/15 B runs never take off (CE stuck at ln 32) | Keep B: 2nd-order, TBPTT 4, no-momentum slightly better |
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
-| E7 | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | Gate 2a: **mid** insertion + window 8 ≫ last / full-BPTT. Memory carries gist/format, not yet exact tokens | Stage A/B running |
+| E7 | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | Gate 2a: **mid** insertion + window 8 beats last / full-BPTT on NLL. Stage A (4000 steps ×8): all variants ≈ same; **swap control: gain is generic, not recall** | Gate 2b NOT passed; fix the training signal |
 
 ### E6 — retention round (done)
 Baseline = `p1_stream/titan_b`: acc 0.99 / 0.70 / 0.43 at 64 / 256 / 512 facts. Per-seed view matters: many variants have seeds that *never take off*.
@@ -81,21 +82,43 @@ fix: curriculum on distance        ret_combo      0.60-0.69   15/15 seeds take o
 window-8 + curriculum → 0.85 / 0.60-0.63; full BPTT without curriculum → 2/3 seeds take off. Take-away: the bottleneck is how far the gradient can reach
 into the past during training (plus write interference), not what the memory does to old content. Remaining gap at 512 facts is interference/capacity, not decay.
 
-### E7 — LLM integration (in progress)
+### E7 — LLM integration (done for now: honest negative)
 Setup (`llm_*.py`, run via `launch.py llm <set>`): frozen Qwen2-0.5B (bf16), 256-token segments run as independent sequences (attention never crosses
 segments), memory hooked in as the only cross-segment channel, loss = CE on answer tokens through the frozen lm_head, only the memory (3.9M params) trains.
-Data: 30K samples (`long_context` / `dialogue` / `agentic`), 150 val per type, seeded shuffle. Modes at eval: `none` (frozen base alone), `off` (memory starved —
-*inflated* control, injects junk), `swap` (memory fed another sample's document — the honest recall control, added after Gate 2a), `on`, `oracle` (full-context attention, upper bound).
+Data: 30K samples (`long_context` / `dialogue` / `agentic`), 150 val per type, seeded shuffle. Eval modes: `none` (frozen base alone), `off` (memory starved —
+*inflated*, injects junk), **`swap` (memory fed another sample's document, same question — the control that matters)**, `on`, `oracle` (full-context attention).
 ```
-Gate 2a (800 steps, 1 seed, A10G ~0.4 s/step)      long_context NLL     agentic NLL    agentic pref-acc
-  none (frozen base)                                    3.70               4.43           0.39
-  last  (after final norm)                              3.73  (no gain)    4.38           0.41
-  mid, full BPTT                                        3.06               3.73           0.61   gradient norms up to 1e9
-  mid, TBPTT 8 chunks                                   2.46               3.31           0.76   stable (gn ≈ 1-3);  oracle: 0.63 / 2.43 / 0.81
+Gate 2a (800 steps, 1 seed)               long_context NLL   agentic NLL   verdict
+  none                                         3.70            4.43
+  last (after final norm)                      3.73            4.38         no gain
+  mid, full BPTT                               3.06            3.73         unstable (grad norm up to 1e9)
+  mid, TBPTT 8 chunks                          2.46            3.31         best  → used for stage A
+Stage A (4000 steps, 8 variants: window 16, clip 0.05, layer 8/16, width 512, lr 3e-4 / 3e-3)
+  all ≈ long_context NLL 2.15-2.30 (lr 3e-4 best, 2.15); lr 3e-3 never takes off (stays at 3.70); L8/L16/width/clip/window: no effect
 ```
-Reading it: memory helps; gain is spread over early/middle/late fact positions; generated answers have the right *type* ("April 14th, 1944" for a date) but not
-the exact tokens (exact-match 0 vs oracle 0.69) → gist, not yet precise recall. Stage A (`full_a`, 4000 steps): window, step clip, insertion depth, memory width, lr.
+**The control that changes the conclusion** (best variant lr 3e-4; default `a_base` is similar):
+```
+type           none  swap   ON   oracle | generic gain (none→swap)  document-specific gain (swap→on)  share doc-specific
+long_context   3.70  2.23  2.15  0.63   |  +1.48                     +0.08                            4.9%
+dialogue       2.44  2.06  2.05  1.14   |  +0.38                     +0.01                            1.8%
+agentic        4.43  3.02  2.97  2.43   |  +1.41                     +0.05                            3.1%
+agentic preference accuracy: none 0.39 · swap 0.84 · on 0.84 · oracle 0.81   → a dataset STYLE artifact, not memory
+long_context exact-match recall (contains): none 0.00 · on 0.02 · oracle 0.69
+```
+Reading: the memory module (3.9M params, mid-layer, with W_o) learned a **document-independent adapter** that teaches the frozen model the answer style/domain prior
+(dates look like dates; correct decisions sound different from "forgot the step" decisions). That shortcut explains almost all of the loss drop, so the gradient toward
+real retrieval is tiny. By fact position (early/middle/late) the swap→on gap is ~0 everywhere. The earlier Gate 2a readings ("NLL 3.70 → 2.46", "preference accuracy
+0.76 vs oracle 0.81") were mostly that shortcut; the swap control (added after Gate 2a) exposed it.
+Why retrieval is hard here (hypotheses, untested): (1) shortcut learning — the generic path cuts the loss first and leaves no signal; (2) answers are rare multi-token strings
+(serial numbers, PO codes) that need token-level binding from mid-layer states, unlike the synthetic tasks whose embeddings did the binding; (3) keys written at fact tokens and
+queries read from the question segment are semantically related but lexically different, and a 3.9M-param module trained 4000 steps may not learn that match.
 
+**Next (proposed):**
+1. *Remove the shortcut from the loss:* contrastive swap term — also run (question, wrong document) and penalise the answer likelihood there
+   (e.g. `nll_on + λ·relu(m − (nll_swap − nll_on))`), so only document-specific information reduces the loss.
+2. *Document-length curriculum* (E6 cured take-off on synthetic; LLM contexts are far longer): ramp the number of context segments 1 → 8.
+3. *Make the fact reachable:* crop training documents around the answer fact so write → read stays inside the gradient window, then lengthen.
+4. Track `swap→on` as THE headline metric; never quote `on` vs `none` alone.
 
 ## Gotchas (cost us time)
 
