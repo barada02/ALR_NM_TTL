@@ -276,7 +276,9 @@ class MiniTitanMemoryModule(nn.Module):
                 gate = gate * m
             if update_memory:
                 inner = (gate.squeeze(-1) * self.cfg.inner_lr * mse).sum()
-                grads = torch.autograd.grad(inner, leaves, create_graph=create)
+                # retain_graph=True is required even when create_graph=False: `read` (and the graph behind it)
+                # is still needed by the outer loss. Without it first-order mode dies on backward().
+                grads = torch.autograd.grad(inner, leaves, create_graph=create, retain_graph=True)
                 grads = [self._clip_step(g, lin.weight) for g, lin in zip(grads, self.memory.linears)]
             else:
                 grads = None
@@ -459,6 +461,19 @@ def _run_checks():
                     ("kv.W_k", mod.kv.W_k.weight), ("memory.W0", mod.memory.linears[0].weight)]:
         assert p.grad is not None and p.grad.abs().sum() > 0, f"Mode B: no meta-gradient to {name}"
     print(f"4. Mode B inner grad ≠ 0 at init, meta-grads reach outer  OK   ‖ΔW‖/‖W‖={met['state_norm_ratio']:.3f}")
+
+    # 4b. first-order Mode B (second_order=False) must backward cleanly too. Found on Modal: the inner
+    #     autograd.grad freed the graph the outer loss still needed. NB: in this mode the write gate gets no
+    #     gradient (θ only enters through the detached inner step) — a property of first-order, not a bug.
+    mod = mk("B", second_order=False)
+    nn.init.normal_(mod.W_o.weight, std=0.1)
+    mod.reset_memory()
+    out, met, _ = mod(torch.randn(B, T, d))
+    (out[:, C:].pow(2).mean()).backward()
+    for name, p in [("retention_gate", mod.retention_gate.net[0].weight), ("W_o", mod.W_o.weight),
+                    ("kv.W_k", mod.kv.W_k.weight), ("memory.W0", mod.memory.linears[0].weight)]:
+        assert p.grad is not None and p.grad.abs().sum() > 0, f"first-order Mode B: no grad to {name}"
+    print("4b. Mode B first-order backward + grads                  OK")
 
     # 5. write_mask = 0 → state never moves (both modes)
     for mode in "AB":

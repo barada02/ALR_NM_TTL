@@ -145,6 +145,7 @@ This mirrors Titans, which treats the full weight tensor as the memory state.
 |----|----------|------|--------|-----|
 | I1 | **Critical** | Mode B inner loop diverges | Chunk-summed delta-rule steps with momentum blow up once the effective step `inner_lr · write_gate` ≳ 0.15: state norm 190× the base weights at lr 0.5, NaN at lr 1.0 (no momentum) or lr 0.2 with a saturated gate. The write gate is free to learn up to 1, so a smaller default is not a guarantee. | Per-sequence, per-layer step clip `‖step‖ ≤ inner_clip·‖W_base‖` (default 0.1, differentiable) + `inner_lr` 0.2. Worst case (gate=1, lr=1, 100 chunks) now bounded at ≈1.4×‖W‖. Permanent sanity check. |
 | I2 | Moderate | Mean retention is a misleading diagnostic | A trained gate wipes memory on some chunk types (query chunk ρ≈0) and holds on others (filler ρ≈0.98). The mean (0.65) suggested a ~26-token half-life while the real retention across filler was 0.60 over 32 chunks. | Half-life now computed from the median chunk. Always inspect per-chunk traces, not means. |
+| I4 | Moderate | First-order Mode B crashed in training | `autograd.grad(..., create_graph=False)` frees the graph that the outer loss still needs ("backward through the graph a second time"). Surfaced on Modal in the `second_order=False` ablation; the sanity suite only exercised the default second-order path. | `retain_graph=True`; sanity check 4b added; the suite now also runs on Modal (`launch.py check`). |
 | I3 | Moderate | Mode A parameter count at LLM scale | Update-rule heads are `dim → out·rank` and `dim → in·rank` per layer: 0.25M params at dim 64, **17.9M at dim 768** (Mode B: 2.9M). | Open. Consider a bottleneck/shared head before Phase 2; matters for Branch A vs B parameter fairness. |
 
 **Lessons (paper material).**
@@ -194,7 +195,7 @@ Recorded from review of `ResearchWork/train_kaggle.py` (built for v1, not yet po
 
 - **Phase 0 (v4 rebuild) — DONE, Gate 0 passed:** H1–H6 fixed; chunked+vectorized forward; MQAR testbed built (segmented-recall
   task not yet built). *Gate: beat no-memory baseline on MQAR or stop.* Results below.
-- **Phase 1 (mechanism battle, synthetic, cheap):** Branch A (learned rule) vs B (gradient +
+- **Phase 1 (mechanism battle, synthetic, cheap) — DONE on Modal (provisional):** see "Phase 1 results" below. Planned scope: Branch A (learned rule) vs B (gradient +
   momentum) vs C (recurrent baseline, matched params). Winner-only ablations: dense vs low-rank
   storage, rank, TBPTT window, inner LR, aux-loss weight/variant. Metrics: recall vs distance,
   vs #stored pairs, length extrapolation (train 4 segments → test 16).
@@ -233,6 +234,52 @@ memory is the only cross-token path in the host, so the information flows throug
   written throughout. Mode A learned to close the gate. (Hypothesis, not yet tested — ablate with `oracle_write_mask` on filler.)
 - One seed. No error bars. Do not rank A vs B from this table.
 
+### Phase 1 results (2026-11-07) — Gate 1 (provisional): Mode B wins the hard task
+
+Run on Modal (`ResearchWork/modal_app.py`, CPU containers), 3 seeds per cell, results in `results/all_p1/` and `results/abl_all/`,
+aggregate with `analyze_results.py`. Two tasks (`synth_tasks.py`): **typed** = the Phase 0 task; **stream** = no filler, distractor facts
+look exactly like target facts, one shared token type (a query differs only by an empty value slot), queries uniform over *all* facts,
+accuracy reported by age in chunks. Stream training: 16–64 facts (1–4 chunks), 3000 steps; eval up to 512 facts (8× the training maximum).
+GRUs are parameter-matched (hidden 75 ≈ Mode B core 36K; hidden 250 ≈ Mode A core 253K) but untuned. Chance = 1/32 = 0.031.
+
+| Host | core params | typed: 8 pairs, filler 512 | typed: 16 pairs, filler 512 | stream 16 facts | stream 64 | stream 256 | stream 512 |
+|------|------------|---|---|---|---|---|---|
+| none | 0 | 0.04 | 0.03 | 0.04 | 0.03 | 0.03 | 0.03 |
+| GRU small | 36.6K | 0.13±0.05 | 0.09±0.03 | 0.10 | 0.06 | 0.04 | 0.03 |
+| GRU large | 253K | 0.18±0.01 | 0.12±0.00 | 0.13 | 0.07 | 0.04 | 0.04 |
+| Mode A | 253K | 1.00±0.00 | 0.99±0.00 | 0.99±0.00 | 0.70±0.03 | 0.07±0.01 | 0.04±0.01 |
+| Mode B | 36K | 0.85±0.02 | 0.63±0.02 | 1.00±0.00 | 0.99±0.01 | 0.70±0.04 | 0.43±0.01 |
+
+Mode B on stream @512 facts, accuracy by age of the queried fact: 0.73 (1 chunk) / 0.83 (2–4) / 0.57 (5–16) / 0.23 (17+ chunks).
+Mode A at 512 facts is at chance for *every* age, including age 1.
+
+**The ranking flips between tasks.** On the typed task Mode A is perfect and Mode B degrades; on the stream task Mode B wins by a wide
+margin with ~7× fewer parameters. The typed result was real but uninformative about memory quality: a content-dependent gate can learn
+"write on pairs, freeze on filler" without ever solving the retention/interference trade-off. This confirms the Phase 0 caveat and is the
+reason Gate 1 is decided on the stream task.
+
+**Ablations** (all on stream unless noted, 3 seeds; table = accuracy at 64 / 256 / 512 facts):
+
+| Question | Result |
+|---|---|
+| Is Mode B's second-order meta-gradient needed? | **Yes.** First-order → chance at every length (0.03 / 0.03 / 0.04 @64 / 256 / 512). Hypothesis (untested): without it nothing trains the write path (W_v, write gate, base weights' "writability"). |
+| TBPTT window (B) | 1 or 2 chunks → chance; 4 → 0.99 / 0.71 / 0.43; 8 → 1.00 / 0.74 / 0.46. Needs a window at least as long as the training distances. |
+| TBPTT window (A) | 1 / 2 / 4 / 8 → 0.08 / 0.38 / 0.70 / 0.86 @64, but @256: 0.04 / 0.06 / 0.07 / 0.02 — longer windows help in-distribution and hurt extrapolation. |
+| Momentum (B) | No benefit: 0.99 / 0.76 / 0.51 without vs 0.99 / 0.70 / 0.44 with. |
+| Inner LR (B), 0.05–0.4 | Flat (0.98–0.99 @64), except 1 of 3 seeds at 0.1 never took off (CE pinned at ln 32 = 3.47) → ~1 in 15 Mode B runs fails to start. |
+| Rank (A), 2 / 4 / 8 / 16 | No effect (0.67–0.70 @64, ≤0.08 @256). Rank is not A's bottleneck. |
+| Aux loss (A) | No aux → chance everywhere: A trains *only* through the aux signal. Immediate-only = immediate+delayed (0.70 @64): the delayed term adds nothing. Weight 1.0 → 0.82 @64 but still chance @256. |
+| Does Mode B degrade at long distance because it writes junk during filler? (typed) | **No.** Forcing filler read-only gives 0.83 / 0.66 vs 0.85 / 0.63 at 512 filler (8 / 16 pairs). The pollution hypothesis from Phase 0 is refuted; the cause is open (candidates: retention vs. capacity, never training beyond ~4 chunks). |
+
+**Gate 1 outcome (provisional).** Mode B is the winner (not within noise); Branch C (matched GRU) does not win, so the premise —
+test-time weight updates buy something over a plain recurrent state at matched parameters — survives on synthetic data. Mode A is kept in
+the repo but dropped from the LLM phase unless its length failure is fixed.
+
+**Caveats.** Three seeds; synthetic tasks where binding is done by the embedding; GRU untuned (same step budget and learning rate as the
+others); Mode A may be undertrained (TBPTT 8 reaches 0.86 @64) but fails beyond the training length for every variant tried; Mode B's
+long-range accuracy (0.43 @512) is far from solved, and its age curve (0.23 at 17+ chunks) shows that retention over long distances is the
+open problem for Phase 2.
+
 **Negative results worth publishing regardless of outcome:** Branch C matching A/B (test-time
 weight updates buy nothing at this scale); memory failing only past the bottleneck (attention
 already solves ≤1-window recall); Mode A failing length extrapolation where Mode B succeeds.
@@ -255,7 +302,12 @@ already solves ≤1-window recall); Mode A failing length extrapolation where Mo
   Mode B one-shot write lowers surprise, Mode B worst-case stability, retention half-life probe. Extend, don't weaken.
 - Experiment runs write `results/<run_name>.json` (config, git SHA, params, curves, eval grid) via `mqar_testbed.save_result`. Phase 0
   runs (`p0_*_s0`) were produced from the working tree before the commit that introduced them, so their `git_sha` is the parent commit.
-- Environment: project `.venv` (CPU torch) is gitignored; secrets live in `.env` (gitignored) and are never read by the code in this repo.
+- Experiments run on Modal only (`ResearchWork/launch.py sweep <name>`; `launch.py check` runs the sanity suite remotely). Config → `exp_config.py`,
+  sweeps → `sweeps.py`, tasks → `synth_tasks.py`, aggregation → `analyze_results.py`. Each run writes `results/<sweep>/<sweep>__<tag>__s<seed>.json`
+  (also stored on the Modal Volume `minititan-results`); re-launching a sweep skips finished runs. `git_sha` in a result is the commit at launch
+  plus `-dirty` if `ResearchWork/` had uncommitted changes.
+- Secrets: Modal credentials live in `.env` (gitignored). `launch.py` is the only code that reads it; it forwards only MODAL_TOKEN_ID /
+  MODAL_TOKEN_SECRET to the Modal CLI process and never prints them. The local `.venv` holds the Modal client only for launching.
 
 ## 7. Reference anchors
 

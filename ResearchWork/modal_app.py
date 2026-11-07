@@ -66,6 +66,22 @@ def run_one(cfg_dict: dict, sweep: str, sha: str = "") -> dict:
     return res
 
 
+@app.function(image=image, cpu=CPU_CORES, memory=4096, timeout=30 * 60)
+def sanity() -> str:
+    """Run the memory-module sanity suite remotely (we do not run models locally)."""
+    import contextlib
+    import io
+    sys.path.insert(0, REMOTE_SRC)
+    import memory_module_v4
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            memory_module_v4._run_checks()
+    except Exception as e:  # report the failure with the output so far
+        return buf.getvalue() + "\nCHECKS FAILED: " + type(e).__name__ + ": " + str(e)
+    return buf.getvalue()
+
+
 def _git_sha() -> str:
     try:
         sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
@@ -75,6 +91,14 @@ def _git_sha() -> str:
         return sha + ("-dirty" if dirty else "")
     except Exception:
         return "unknown"
+
+
+@app.local_entrypoint()
+def checks():
+    out = sanity.remote()
+    print(out)
+    if "CHECKS FAILED" in out:
+        sys.exit(1)
 
 
 @app.local_entrypoint()

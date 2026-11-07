@@ -37,21 +37,28 @@ markmap:
 ## Phase 1 — Branch battle on synthetics 🖥️/☁️
 - Branch A — learned update rule (TBPTT + aux loss)
   - hypothesis: trains fast, may extrapolate poorly to longer sequences
-  - 🔄 MQAR done (1 seed): ≈1.00 up to 16 pairs / 512 filler; segmented recall todo
+  - ✅ typed MQAR: ≈1.00 everywhere (3 seeds). ❌ stream MQAR (hard): 0.99 @16 facts, 0.70 @64, chance @≥256 — fails past training length for every rank/aux variant
+  - ⬜ segmented recall task still todo
 - Branch B — gradient update (faithful Titans)
   - hypothesis: slower, principled, better length generalization
-  - ⬜ momentum on/off ablation
-  - 🔄 MQAR done (1 seed): 1.00 up to 128 filler, degrades at 512 filler (0.96 / 0.86 / 0.65 for 4 / 8 / 16 pairs); segmented recall todo
+  - ✅ momentum on/off: momentum does not help (no-momentum 0.51 vs 0.44 @512 facts, 3 seeds)
+  - ✅ stream MQAR (hard): 0.99 @64 facts, 0.70 @256, 0.43 @512 (3 seeds); typed: 1.00 → 0.85/0.63 @512 filler for 8/16 pairs
+  - ⬜ segmented recall task still todo
 - Branch C — plain recurrent baseline (GRU state, same param budget)
   - the null hypothesis: is test-time weight update buying anything?
-  - 🔄 MQAR done (1 seed): GRU 0.25 @4 pairs → 0.09 @16 pairs (not matched in params: 25K vs 36K–250K); segmented recall todo
-- 🚪 GATE 1: pick winner (top-2 if within noise)
-  - C wins → major finding: rethink premise before LLM phase
+  - ✅ param-matched (75 / 250 hidden ≈ Mode B / Mode A core): stream 0.10–0.13 @16 facts → 0.03–0.04 @512; typed 0.09–0.19. Untuned, same budget as the others.
+- ✅ 🚪 GATE 1 (provisional, 3 seeds, synthetic): **Mode B wins** the hard task by a wide margin (not within noise); C does not win → premise survives
+  - Mode A wins only the easy typed task, where a content-dependent gate can shortcut; it is dropped from the LLM phase unless its length failure is fixed
+  - caveat: Mode A may be undertrained (TBPTT 8 lifts it to 0.86 @64) — but it still fails beyond the training length
 - Winner-only ablations
-  - ⬜ dense ΔW vs low-rank storage
-  - ⬜ update rank sweep (4/8/16)
-  - ⬜ TBPTT window sweep (Mode A) / inner-LR sweep (Mode B)
-  - ⬜ aux loss weight sweep + delayed-recall aux variant
+  - ⬜ dense ΔW vs low-rank storage (Mode B state is dense by construction; Mode A state is dense too — only A's writes are low-rank)
+  - ✅ update rank sweep (Mode A, 2/4/8/16): no effect on anything → rank is not the bottleneck
+  - ✅ TBPTT sweep: B needs ≥4 chunks (1–2 → chance); A improves in-distribution with window but extrapolates worse
+  - ✅ inner-LR sweep (B, 0.05–0.4): flat, except one seed at 0.1 never took off (CE stuck at ln 32)
+  - ✅ aux ablation (A): no aux → chance; delayed term adds nothing over immediate; weight 1.0 better in-distribution (0.82 vs 0.70)
+  - ✅ second-order vs first-order (B): first-order → chance. Second-order meta-gradients are required
+  - ✅ filler-write mask (B, typed): masking junk writes does NOT fix the long-distance degradation → pollution hypothesis refuted, cause open
+  - ⬜ longer training distances / curriculum for B (does the 512-fact degradation close?)
 
 ## Phase 2 — Frozen-LLM integration ☁️
 - Segmented pipeline (the information bottleneck)
@@ -104,3 +111,7 @@ markmap:
 - v4: Mode B diverges (NaN / 190× state norm) when effective step inner_lr·gate ≳ 0.15 with momentum → inner_clip safeguard
 - v4: logged mean retention is misleading (learned gate wipes on query chunks, ρ≈0, ≈0.98 on filler) → use median
 - v4 caveat: testbed filler/pair/query tokens are trivially separable, so "write on pairs, freeze on filler" is easy — Phase 2 must not assume this
+- phase1 stream (3 seeds): Mode B 0.99/0.70/0.43 @64/256/512 facts, age-decay 0.73→0.23 @512; Mode A 0.70/0.07/0.04; GRU ≤0.13; none = chance
+- phase1: ranking FLIPS between typed (A ≈1.00 > B) and stream (B ≫ A) → the typed testbed rewarded type-based gating, not memory quality
+- phase1: Mode B needs second-order grads and TBPTT ≥ 4 chunks; ~1 in 15 runs never takes off (CE pinned at ln 32 = 3.47)
+- bug found on Modal: first-order Mode B crashed (autograd.grad without retain_graph) — sanity suite missed it; now covered (check 4b)
