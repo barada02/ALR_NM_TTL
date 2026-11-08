@@ -25,6 +25,7 @@ import math
 from typing import Dict, Iterator, List, Tuple
 
 import torch
+import torch.nn.functional as F
 
 from exp_config import ExpConfig
 
@@ -152,7 +153,96 @@ class StreamTask(Task):
                 yield f"facts={n}", self.batch(B, n, gen, device)
 
 
-TASKS = {"typed": TypedTask, "stream": StreamTask}
+class UpdateTask(Task):
+    """
+    Overwrite / interference. K active keys, each written R times with a DIFFERENT value each time, writes of all keys
+    interleaved in random order; the query returns the LATEST value. Extra single-write distractor keys pad the stream so the
+    queries start on a chunk boundary. `prev` holds the older values of each queried key (for the stale-answer rate).
+
+    n_attrs > 1 makes keys COLLIDE: a key is (entity, attribute); keys of one entity share the entity embedding and differ only in
+    the attribute (carried in the fil_id slot) — like two serial numbers of the same flow meter. n_attrs = 1: all keys distinct.
+    """
+    name = "update"
+
+    def __init__(self, cfg: ExpConfig):
+        self.C = cfg.chunk_size
+        self.n_keys = cfg.n_keys or 1024
+        self.n_vals = cfg.n_vals
+        self.A = max(cfg.n_attrs, 1)
+        self.n_filler = self.A if self.A > 1 else 1
+        self.Q = cfg.n_queries
+        self.k_min, self.k_max, self.r_max = cfg.n_active_min, cfg.n_active_max, cfg.n_updates_max
+        self.curriculum = cfg.curriculum
+        self.eval_active = [int(x) for x in cfg.eval_active.split(",")]
+        self.eval_updates = [int(x) for x in cfg.eval_updates.split(",")]
+        assert max(self.eval_active) + self.C <= self.n_keys
+
+    def batch(self, B, K, R, gen, device):
+        C, NK, NV, A = self.C, self.n_keys, self.n_vals, self.A
+        Q = min(self.Q, K)
+        n_target = K * R
+        n_pad = math.ceil(n_target / C) * C
+        M = K + (n_pad - n_target)                                              # active keys + single-write distractors
+        ents = torch.rand(B, NK, generator=gen).argsort(-1)[:, :math.ceil(M / A)]   # distinct entities per sequence
+        idx = torch.arange(M)
+        key_ent = ents[:, idx // A]                                             # (B,M)
+        key_attr = (idx % A).unsqueeze(0).expand(B, M)                          # (B,M)
+
+        base = torch.cat([torch.arange(K).repeat_interleave(R), torch.arange(K, M)])        # (n_pad,)
+        slot = base[torch.rand(B, n_pad, generator=gen).argsort(-1)]            # key written at each position
+        oh = F.one_hot(slot, M)
+        ver = (oh.cumsum(1) * oh).sum(-1) - 1                                   # 0-based version of each write
+        V = torch.empty(B, M, R, dtype=torch.long)                              # value of (key, version)
+        V[:, :, 0] = torch.randint(0, NV, (B, M), generator=gen)
+        for r in range(1, R):                                                   # every update differs from the previous value
+            V[:, :, r] = (V[:, :, r - 1] + 1 + torch.randint(0, NV - 1, (B, M), generator=gen)) % NV
+        ar = torch.arange(B).unsqueeze(1)
+        val = V[ar, slot, ver]                                                  # (B,n_pad)
+
+        qk = torch.rand(B, K, generator=gen).argsort(-1)[:, :Q]                 # queried keys (uniform over active keys)
+        target = V[ar, qk, R - 1]                                               # latest value
+        prev = V[ar, qk][:, :, :R - 1] if R > 1 else torch.full((B, Q, 1), NV)  # older values (stale candidates)
+
+        T = n_pad + Q
+        typ = torch.full((B, T), PAIR, dtype=torch.long)
+        key_id = torch.full((B, T), NK, dtype=torch.long)
+        val_id = torch.full((B, T), NV, dtype=torch.long)
+        fil_id = torch.full((B, T), self.n_filler, dtype=torch.long)
+        key_id[:, :n_pad] = key_ent.gather(1, slot)
+        val_id[:, :n_pad] = val
+        key_id[:, n_pad:] = key_ent.gather(1, qk)
+        if A > 1:
+            fil_id[:, :n_pad] = key_attr.gather(1, slot)
+            fil_id[:, n_pad:] = key_attr.gather(1, qk)
+        tgt = torch.zeros(B, T, dtype=torch.long)
+        tgt[:, n_pad:] = target
+        qmask = torch.zeros(B, T, dtype=torch.bool)
+        qmask[:, n_pad:] = True
+        W = prev.shape[-1]
+        prev_full = torch.full((B, T, W), NV, dtype=torch.long)
+        prev_full[:, n_pad:, :] = prev
+        last = ((slot.unsqueeze(1) == qk.unsqueeze(2)) * torch.arange(n_pad)).max(-1).values      # (B,Q) last write position
+        age = torch.zeros(B, T, dtype=torch.long)
+        age[:, n_pad:] = ((n_pad + torch.arange(Q)) // C).unsqueeze(0) - last // C
+        return _pack(device, typ=typ, key_id=key_id, val_id=val_id, fil_id=fil_id, target=tgt, qmask=qmask,
+                     age=age, prev=prev_full)
+
+    def train_batch(self, B, gen, device, progress=1.0):
+        hi = self.k_max
+        if self.curriculum > 0:
+            hi = self.k_min + round((self.k_max - self.k_min) * min(1.0, progress / self.curriculum))
+        K = int(torch.randint(self.k_min, max(hi, self.k_min) + 1, (1,), generator=gen))
+        R = int(torch.randint(1, self.r_max + 1, (1,), generator=gen))
+        return self.batch(B, K, R, gen, device)
+
+    def eval_items(self, B, gen, device, n_batches):
+        for K in self.eval_active:
+            for R in self.eval_updates:
+                for _ in range(n_batches):
+                    yield f"K={K},R={R}", self.batch(B, K, R, gen, device)
+
+
+TASKS = {"typed": TypedTask, "stream": StreamTask, "update": UpdateTask}
 
 
 def build_task(cfg: ExpConfig) -> Task:

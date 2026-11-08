@@ -14,7 +14,11 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
   The fix — **next-token values (`shift_v`) + crop-around-the-fact curriculum + long gradient window** (E7b) — gives, after 6000 steps (E7c): long-context answer NLL
   **3.67 (no memory) → 1.10±0.03** (generic adapter alone: 2.15; full-context oracle 0.62); wrong document → 3.82; key-detail recall 0.50 (oracle 0.83, none 0.04).
 - **Where things run:** everything on **Modal** (`launch.py`). Do not run models locally.
-- **Next:** scale (Qwen2-1.5B, 16 segments), a fairer oracle (adapter-matched), harder tests (multi-fact, other domains), then the write-up (Phase 3).
+- **Goal (decided):** a workshop-style *mechanism* paper (not a deployable context-extension method). External review (2 independent engineers) ranked the open risks — see "Open items".
+- **Interference (E8):** overwrite works but ~75-94% of its errors are STALE values, caused by lost write order inside a chunk (smaller chunks fix it). At matched state size the 2-layer
+  MLP memory ties a linear memory on distinct-key overwrite but beats it on colliding keys (0.72 vs 0.49) and on long streams (0.69 vs 0.41).
+- **Next (agreed order):** (2) paired LLM controls: document-free adapter + adapter-matched oracle on the same val set; (3) haystack with COLLIDING keys (same entity, different value);
+  (4) held-out generator + public benchmark in two tiers (zero-shot and after adaptation, report both); (5) Qwen2-1.5B only if the matched-state margin holds; standalone gated DeltaNet before submission.
 
 ## Run things
 
@@ -66,6 +70,7 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E5 | Ablations (`abl_*`, 78 runs) | B needs 2nd-order grads (1st-order = chance) and TBPTT ≥4 chunks; momentum no help; A needs aux loss, rank/delayed-aux irrelevant; masking filler writes does *not* fix B (hypothesis refuted); ~1/15 B runs never take off (CE stuck at ln 32) | Keep B: 2nd-order, TBPTT 4, no-momentum slightly better |
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
 | E7a | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | **mid** insertion + window 8 best. But **swap control: 95–99% of the gain is a generic adapter** (no recall) | Gate 2b not passed; diagnose |
+| E8 | Overwrite / colliding keys (`upd_*`), linear-memory ablation (`lin_stream`), why errors are stale (`upd_diag`) | Memory survives interference; errors are stale values from lost within-chunk order (C 16→4: stale 0.24→0.05). MLP ≈ linear on distinct keys, MLP ≫ linear on colliding keys / long streams at matched state | Use small chunks for update-heavy data; DeltaNet baseline still owed |
 | E7c | Stage B: recipe at 6000 steps, full BPTT vs window 32, 3 seeds | **long-context NLL 1.10±0.03 / 1.15±0.01** (none 3.67, swap 3.82, oracle 0.62); agentic ON 2.41 ≈ oracle 2.42; pref-acc 0.91 vs swap 0.81 | **Gate 2b passed**; use full BPTT + crop + shift_v |
 | E7b | Fixes: crop curriculum, contrastive swap loss, next-token values (`shift_v`) | crop / contrast alone: no recall (contrast is gameable). **`shift_v` + crop + window ≥16: ON 1.79 vs generic 2.15, 3 seeds; full BPTT 1.42; control without `shift_v` 2.18** | Recipe found; Gate 2b passes |
 
@@ -159,7 +164,44 @@ bound needs an adapter-matched oracle. (2) The generic-adapter reference (2.15/2
 generator (3 facts / 1000-word docs), up to 8 segments. (4) Exact-match is still low; the memory returns the key details more often than whole phrases. (5) Generic style adaptation is still part of the
 none→ON gain (agentic swap 3.23 vs none 4.40); only the swap→ON / ON-vs-generic parts are document-specific.
 
+### E8 — interference: overwrite, colliding keys, linear-memory ablation (done)
+Triggered by external review: the synthetic tasks never re-wrote a key or collided keys. New `update` task (`synth_tasks.UpdateTask`): K keys, each written R times with a DIFFERENT value, interleaved;
+query = LATEST value; `stale` = share of answers that equal an OLDER value of that key. `n_attrs=4` makes keys collide (key = entity+attribute, keys of one entity share the entity embedding).
+All memory hosts use the E6 recipe (full BPTT, curriculum, clip 0.05, no momentum); 3 seeds; "linear" = 1-layer Mode B = ONE d×d map + delta rule — a *linear associative memory*, NOT a DeltaNet
+(no per-channel gating/normalisation); `lin_b_d128` has the same state as the 2-layer MLP at dim 64 (16,384 floats), `lin_b` has 4× less (4,096). Chance 0.03.
+```
+accuracy of the LATEST value (successful seeds)         K16 R1   K16 R2   K16 R4   K16 R8   K64 R8 | colliding keys: K16R4  K64R8
+GRU 75 / 250 floats of state                             0.10-0.11 (flat, ≤0.11 everywhere)                | 0.10 / 0.11   0.05
+Mode A (state 16,384)                                    1.00     0.72     0.73     0.67     0.37   |  0.61          0.27
+Mode B 2-layer MLP (16,384)                              1.00     0.72     0.73     0.71     0.49   |  0.72          0.46
+linear d=128 (16,384, same state)                        1.00     0.74     0.72     0.70     0.42   |  0.49          0.22
+linear d=64 (4,096, 4× less state)                       0.75     –        0.42     0.39     0.21   |  0.28          0.13
+```
+1. **Overwrite works but is imperfect, and the errors are STALE values.** One write per key: 1.00. One overwrite (R=2): 0.72, and more overwrites barely hurt. At moderate load 75-94% of the wrong
+   answers are the previous value (a random guess would be stale 3-22%). At high load (K=64, R=8) errors turn random (≈25% stale) → capacity, not staleness.
+2. **Cause: lost write order inside a chunk** (all tokens of a chunk are written simultaneously, so two writes to one key cannot say which is later). `upd_diag` (Mode B, successful seeds):
+   chunk 16 → 8 → 4: stale 0.24 → 0.11 → 0.04-0.06, accuracy at K16R2 0.72 → 0.88 → 0.95; a looser step clip (0.3, 1.0) changes nothing (hypothesis "writes too gentle" refuted). Smaller chunks also
+   cure take-off (3/3 seeds, vs 2/3 at chunk 16). Cost: more chunk steps. Chunk 1 would be exact; a recency-aware within-chunk write (position-weighted / cumulative decay) is the untested fix.
+3. **Does the nonlinearity earn its keep?** At MATCHED state it depends on the task. Distinct keys, overwrite: tie (0.72 vs 0.73). **Colliding keys: MLP 0.72 vs linear 0.49** (Mode B loses nothing from collisions:
+   0.73 → 0.72; linear drops 0.72 → 0.49). **Long stream (E6 recipe): MLP 0.69 vs linear 0.41 at 512 facts** (2.5× fewer parameters: 36K vs 91K). State size matters a lot: linear with 4× less state is far worse.
+4. Mode B still has ~1/3 seeds that never take off at chunk 16 in this recipe (`titan_b` 2/3 on `upd_main` and `upd_similar`); chunk ≤8 gave 3/3.
+Caveats: GRU still not state-matched in the matrix sense; no gated DeltaNet / GLA / Mamba baseline yet; keys/values are still embedding-bound single tokens; LLM data has almost no overwrites, so (1)-(2) are a
+limitation to report, not a blocker for the document-recall claim.
+
+## Open items (from two external reviews, ranked)
+1. Standalone gated DeltaNet (state-matched) on the synthetic tasks — required before submission; `lin_b_d128` is only a linear associative memory.
+2. LLM paired controls: document-free adapter (same module, writes disabled, segmented base) and adapter-matched oracle (same module, full attention) on the SAME val set; until then report ON vs generic and
+   detail recall only, never "% of oracle gap".
+3. Haystack with COLLIDING keys (same entity, different value), not just longer documents; then 16-64 segments, framed as "context storage stops growing" (do NOT quote a KV-cache break-even number).
+4. Held-out generator / topics, then a public benchmark (RULER / BABILong) in TWO tiers, both reported: zero-shot transfer and after a short adaptation with the same budget given to baselines.
+5. Code nits: with `shift_v` the last token of a segment pairs with the first of the next (mask the write at segment ends); retention is one scalar per chunk shared by all layers; generation re-runs the whole
+   pipeline per token (eval-code limitation); context truncation keeps the start (affects ~1% of docs).
+6. Cost/regime table vs full attention (only meaningful at many segments); Qwen2-1.5B only after 1-4.
+
 ## Gotchas (cost us time)
+
+- Chunk-parallel writes lose within-chunk order: same-key overwrites inside one chunk return the OLD value ~half the time (E8). Use chunk ≤ 8 for update-heavy data.
+- `lin_b` / `mem_layers=1` is a linear associative memory, not a DeltaNet; never label it as one.
 
 - `swap→on` can be inflated by a *mismatch detector* (module switches off for the wrong document without recalling anything). Always also compare `ON` to the generic-adapter reference and check detail recall.
 - Same-position `(k_t, v_t)` memory cannot recall multi-token strings from a frozen LM: use `shift_v` (next-token values).

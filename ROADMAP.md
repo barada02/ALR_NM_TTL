@@ -121,3 +121,5 @@ markmap:
 - LLM: same-position (k_t,v_t) memory cannot recall strings; next-token values (`shift_v`) + crop curriculum + long window: long-context NLL 1.42-1.9 vs generic 2.15 (3 seeds), swap ≈ none
 - LLM: contrastive swap loss is gameable (swap→on +1.2 with no ON gain); judge by ON vs generic reference + detail recall
 - LLM Stage B (3 seeds): long-context NLL 3.67 → 1.10±0.03 (generic adapter 2.15, oracle 0.62), wrong doc 3.82, no decay with distance; oracle is not adapter-matched → % of gap over-credits
+- E8 interference: overwrite errors are STALE values (75-94%) from lost within-chunk write order (chunk 16→4: stale 0.24→0.05); MLP ≈ linear on distinct-key overwrite but MLP 0.72 vs linear 0.49 on colliding keys and 0.69 vs 0.41 on long streams at matched state
+- External review → open items: standalone gated DeltaNet · paired LLM controls (doc-free adapter + adapter-matched oracle) · colliding-key haystack · held-out generator + RULER/BABILong in two tiers · 1.5B only after these

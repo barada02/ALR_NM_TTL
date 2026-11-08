@@ -47,6 +47,13 @@ class ExpConfig:
     curriculum: float = 0.0          # >0: the max #facts ramps linearly train_facts_min → train_facts_max over this
                                      # fraction of training (fixes the 'never takes off' failure on long distances)
     eval_facts: str = "16,64,256,512"
+    # update task: keys are re-written with NEW values; the query must return the LATEST (interference / stale values)
+    n_active_min: int = 4            # train: #distinct keys ~ U[min, max] (max ramps with `curriculum`)
+    n_active_max: int = 16
+    n_updates_max: int = 4           # train: writes per key ~ U[1, this]
+    n_attrs: int = 1                 # >1: colliding keys — a key is (entity, attribute); keys of one entity share the entity embedding
+    eval_active: str = "8,16,32,64"
+    eval_updates: str = "1,2,4,8"
     # oracle ablations (typed task): force read-only positions
     oracle_write_mask: bool = False  # queries are read-only
     oracle_mask_filler: bool = False # filler (and queries) are read-only

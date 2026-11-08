@@ -23,6 +23,13 @@ HOSTS: Dict[str, dict] = {
     "titan_b":   dict(model="titan_b"),
 }
 
+# Linear associative memory = 1-layer Mode B (a single d×d map updated by the delta rule). NOT a DeltaNet (no per-channel gating,
+# different normalisation) — it isolates whether MLP depth/nonlinearity matters. lin_b_d128 matches the 2-layer MLP's state size
+# (128×128 = 16,384 floats = 2 × 128×64 at dim 64); lin_b at dim 64 has 4× less state.
+HOSTS_EXT: Dict[str, dict] = {**HOSTS,
+    "lin_b":      dict(model="titan_b", mem_layers=1),
+    "lin_b_d128": dict(model="titan_b", mem_layers=1, dim=128)}
+
 TYPED = dict(task="typed", steps=1500, eval_every=500)
 STREAM = dict(task="stream", steps=3000, eval_every=1000)
 
@@ -54,6 +61,40 @@ def p1_typed(seeds):
 def p1_stream(seeds):
     """Hard task: distractor facts look like facts, one token type, queries uniform over all facts."""
     return _grid("p1_stream", HOSTS, seeds, STREAM)
+
+
+# ── interference: overwrite / colliding keys, and the linear-memory ablation ─────────────────────────────────
+
+# Mode B recipe from E6 (full BPTT + curriculum + small clip, no momentum) for every memory host, so only the host differs.
+UPD = dict(task="update", steps=3000, eval_every=1000, tbptt_chunks=0, use_momentum=False, curriculum=0.5, inner_clip=0.05)
+
+
+def upd_main(seeds):
+    """Same key re-written with new values; query = latest value. Reports accuracy and the stale-answer rate."""
+    return _grid("upd_main", HOSTS_EXT, seeds, UPD)
+
+
+def upd_similar(seeds):
+    """Colliding keys: 4 attributes per entity, so keys of one entity share part of their representation."""
+    return _grid("upd_similar", HOSTS_EXT, seeds, {**UPD, "n_attrs": 4})
+
+
+def upd_diag(seeds):
+    """Why are ~80% of overwrite errors STALE values? H1: writes inside one chunk are simultaneous, so same-key order is lost
+    (smaller chunks should help). H2: writes are too gentle (step clip 0.05) to fully replace the old value (looser clip should help)."""
+    v = {}
+    for h in ("titan_b", "lin_b_d128"):
+        for tag, kw in {"c8": dict(chunk_size=8), "c4": dict(chunk_size=4), "clip0.3": dict(inner_clip=0.3),
+                        "clip1": dict(inner_clip=1.0)}.items():
+            v[f"{h}_{tag}"] = {**HOSTS_EXT[h], **kw}
+    return _grid("upd_diag", v, seeds, UPD)
+
+
+def lin_stream(seeds):
+    """Linear associative memory on the stream task with the E6 recipe; compare with ret_combo__full256_cur_clip05 (2-layer)."""
+    base = {**STREAM, "use_momentum": False, "train_facts_max": 256, "tbptt_chunks": 0, "curriculum": 0.5, "inner_clip": 0.05}
+    v = {k: HOSTS_EXT[k] for k in ("lin_b", "lin_b_d128")}
+    return _grid("lin_stream", v, seeds, base)
 
 
 def abl_b_mask(seeds):
@@ -178,7 +219,8 @@ def all_p1(seeds):
 
 
 SWEEPS: Dict[str, Callable] = {f.__name__: f for f in
-                               [smoke, p1_typed, p1_stream, all_p1, *ABLATIONS, abl_all, *RETENTION, ret_all, ret_bptt, ret_combo]}
+                               [smoke, p1_typed, p1_stream, all_p1, *ABLATIONS, abl_all, *RETENTION, ret_all, ret_bptt, ret_combo,
+                                upd_main, upd_similar, lin_stream, upd_diag]}
 
 
 def build_sweep(name: str, seeds: Optional[Iterable[int]] = None) -> List[ExpConfig]:

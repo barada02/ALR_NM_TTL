@@ -109,7 +109,12 @@ class Host(nn.Module):
 def count_params(model: nn.Module, skip=("E_", "head", "norm")) -> dict:
     total = sum(p.numel() for p in model.parameters())
     core = sum(p.numel() for n, p in model.named_parameters() if not n.startswith(skip))
-    return {"total": total, "memory_core": core}
+    state = 0                                                # per-sequence recurrent state, in floats (the fair-comparison axis)
+    if getattr(model, "mem", None) is not None:
+        state = sum(o * i for o, i in model.mem.memory.shapes())
+    elif getattr(model, "gru", None) is not None:
+        state = model.gru_hidden
+    return {"total": total, "memory_core": core, "state_floats": state}
 
 
 # ── Train / eval ──────────────────────────────────────────────────────────────
@@ -137,7 +142,13 @@ def evaluate(model: Host, cfg: ExpConfig, task: Task, device):
         correct = (logits[q].argmax(-1) == b["target"][q]).float()
         tally[label][0] += correct.sum().item()
         tally[label][1] += correct.numel()
-        if task.name == "stream":
+        if "prev" in b:                                      # update task: how often is the answer a STALE (older) value?
+            pred = logits[q].argmax(-1)
+            stale = ((pred.unsqueeze(1) == b["prev"][q]).any(1) & (pred != b["target"][q])).float()
+            ts = tally[f"{label}|stale"]
+            ts[0] += stale.sum().item()
+            ts[1] += stale.numel()
+        if task.name in ("stream", "update"):
             age = b["age"][q]
             for lo, hi, name in AGE_BUCKETS:
                 m = (age >= lo) & (age <= hi)
