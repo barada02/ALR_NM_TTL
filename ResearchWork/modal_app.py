@@ -77,6 +77,8 @@ def sanity() -> str:
     try:
         with contextlib.redirect_stdout(buf):
             memory_module_v4._run_checks()
+            import deltanet
+            deltanet._check()
     except Exception as e:  # report the failure with the output so far
         return buf.getvalue() + "\nCHECKS FAILED: " + type(e).__name__ + ": " + str(e)
     return buf.getvalue()

@@ -10,7 +10,10 @@ from dataclasses import dataclass
 @dataclass
 class ExpConfig:
     # ── which host ───────────────────────────────────────────────────────────
-    model: str = "titan_a"           # none | gru | titan_a | titan_b
+    model: str = "titan_a"           # none | gru | gdn | gdn_rf | titan_a | titan_b
+    gdn_decay_bias: float = 4.0      # per-TOKEN decay α = σ(bias): 4 → 0.982 (half-life 38 tokens). Mode B retains per CHUNK: σ(4)=0.982
+                                     # per 16 tokens (half-life ~600 tokens). 7 → 0.9991 per token ≈ the same per-chunk retention as Mode B.
+    gdn_dim: int = 128               # gated DeltaNet state is gdn_dim × gdn_dim (128 → 16,384 floats, = the 2-layer MLP memory at dim 64)
     gru_hidden: int = 0              # 0 → dim
     gru_match: str = ""              # "titan_a"/"titan_b": pick GRU width so core params ≈ that model's core params
 

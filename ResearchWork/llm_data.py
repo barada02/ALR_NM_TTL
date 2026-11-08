@@ -41,7 +41,7 @@ def _to_example(rec: dict) -> Optional[dict]:
     fact_char = None
     if t == "long_context":
         ctx, q, a = rec["context"].strip(), rec["question"], rec["answer"].strip()
-        meta = {"type": t, "fact_position": rec.get("fact_position"), "distractors": rec.get("distractor_count")}
+        meta = {"type": t, "fact_position": rec.get("fact_position"), "distractors": rec.get("distractor_count"), "annot": rec.get("annot")}
         wrong = None
         i = ctx.find(a)
         fact_char = i if i >= 0 else None

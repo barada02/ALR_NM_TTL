@@ -90,6 +90,36 @@ def upd_diag(seeds):
     return _grid("upd_diag", v, seeds, UPD)
 
 
+# ── gated DeltaNet: the state-matched external baseline (16,384 floats, ~33K params — matched to Mode B on both axes) ────────────
+
+GDN_HOSTS = {"gdn": dict(model="gdn"), "gdn_rf": dict(model="gdn_rf")}
+
+
+def gdn_update(seeds):
+    return _grid("gdn_update", GDN_HOSTS, seeds, UPD)
+
+
+def gdn_similar(seeds):
+    return _grid("gdn_similar", GDN_HOSTS, seeds, {**UPD, "n_attrs": 4})
+
+
+def gdn_stream(seeds):
+    """Same E6 recipe as lin_stream; compare with ret_combo__full256_cur_clip05 (Mode B, 0.88 / 0.69 at 256 / 512 facts)."""
+    base = {**STREAM, "use_momentum": False, "train_facts_max": 256, "tbptt_chunks": 0, "curriculum": 0.5, "inner_clip": 0.05}
+    return _grid("gdn_stream", GDN_HOSTS, seeds, base)
+
+
+def gdn_tuned(seeds):
+    """Fairness check: the first gated-DeltaNet runs used a per-token decay with a ~38-token half-life but were evaluated at up to
+    512 facts. Re-run with decay_bias 7 (per-token α = 0.9991 ≈ Mode B's per-chunk retention) on all three tasks."""
+    out = []
+    for task, base in (("update", UPD), ("similar", {**UPD, "n_attrs": 4}),
+                       ("stream", {**STREAM, "use_momentum": False, "train_facts_max": 256, "tbptt_chunks": 0, "curriculum": 0.5})):
+        v = {f"{task}_{h}_bias7": {**GDN_HOSTS[h], "gdn_decay_bias": 7.0} for h in ("gdn", "gdn_rf")}
+        out += _grid("gdn_tuned", v, seeds, base)
+    return out
+
+
 def lin_stream(seeds):
     """Linear associative memory on the stream task with the E6 recipe; compare with ret_combo__full256_cur_clip05 (2-layer)."""
     base = {**STREAM, "use_momentum": False, "train_facts_max": 256, "tbptt_chunks": 0, "curriculum": 0.5, "inner_clip": 0.05}
@@ -220,7 +250,8 @@ def all_p1(seeds):
 
 SWEEPS: Dict[str, Callable] = {f.__name__: f for f in
                                [smoke, p1_typed, p1_stream, all_p1, *ABLATIONS, abl_all, *RETENTION, ret_all, ret_bptt, ret_combo,
-                                upd_main, upd_similar, lin_stream, upd_diag]}
+                                upd_main, upd_similar, lin_stream, upd_diag, gdn_update, gdn_similar, gdn_stream,
+                                gdn_tuned]}
 
 
 def build_sweep(name: str, seeds: Optional[Iterable[int]] = None) -> List[ExpConfig]:

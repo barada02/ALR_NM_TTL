@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from exp_config import ExpConfig  # noqa: E402
 from memory_module_v4 import MemoryConfig, MiniTitanMemoryModule  # noqa: E402
 from results_io import save_result  # noqa: E402,F401  (re-exported for convenience)
+from deltanet import GatedDeltaNet  # noqa: E402
 from synth_tasks import AGE_BUCKETS, FILL, Task, build_task  # noqa: E402
 
 
@@ -71,9 +72,11 @@ class Host(nn.Module):
         self.E_fil = nn.Embedding(task.n_filler + 1, d, padding_idx=task.n_filler)
         self.norm = nn.LayerNorm(d)
         self.head = nn.Linear(d, task.n_vals)
-        self.mem = self.gru = self.gru_out = None
+        self.mem = self.gru = self.gru_out = self.gdn = None
         if cfg.model in ("titan_a", "titan_b"):
             self.mem = MiniTitanMemoryModule(_memory_config(cfg, cfg.model))
+        elif cfg.model in ("gdn", "gdn_rf"):
+            self.gdn = GatedDeltaNet(d, cfg.gdn_dim, read_first=(cfg.model == "gdn_rf"), decay_bias=cfg.gdn_decay_bias)
         elif cfg.model == "gru":
             h = cfg.gru_hidden or d
             if cfg.gru_match:
@@ -100,6 +103,8 @@ class Host(nn.Module):
         if self.mem is not None:
             self.mem.reset_memory()
             h, met, aux = self.mem(h, write_mask=self.write_mask(b))
+        elif self.gdn is not None:
+            h = self.gdn(h)
         elif self.gru is not None:
             g, _ = self.gru(h)
             h = h + self.gru_out(g)
@@ -112,6 +117,8 @@ def count_params(model: nn.Module, skip=("E_", "head", "norm")) -> dict:
     state = 0                                                # per-sequence recurrent state, in floats (the fair-comparison axis)
     if getattr(model, "mem", None) is not None:
         state = sum(o * i for o, i in model.mem.memory.shapes())
+    elif getattr(model, "gdn", None) is not None:
+        state = model.gdn.state_floats
     elif getattr(model, "gru", None) is not None:
         state = model.gru_hidden
     return {"total": total, "memory_core": core, "state_floats": state}

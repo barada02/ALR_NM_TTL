@@ -1,0 +1,1999 @@
+{
+ "config": {
+  "run_name": "b_full_s0",
+  "base_model": "Qwen/Qwen2-0.5B",
+  "insert": "mid",
+  "insert_layer": -1,
+  "seg_len": 256,
+  "max_ctx_segments": 64,
+  "mem_mode": "B",
+  "mem_hidden": 256,
+  "mem_layers": 2,
+  "rank": 8,
+  "chunk_size": 32,
+  "tbptt_chunks": 0,
+  "shift_v": true,
+  "inner_lr": 0.2,
+  "inner_clip": 0.1,
+  "use_momentum": false,
+  "second_order": true,
+  "retention_bias": 4.0,
+  "retention_learned": true,
+  "aux_weight": 0.1,
+  "train_mode": "memory",
+  "contrast_weight": 0.0,
+  "contrast_margin": 1.0,
+  "crop": true,
+  "crop_curriculum": 0.5,
+  "crop_pre_tokens": 48,
+  "crop_d_min": 32,
+  "data_dir": "/data/miniTitan_data",
+  "types": "long_context,dialogue,agentic",
+  "val_per_type": 300,
+  "gen_eval_per_type": 100,
+  "seed": 0,
+  "split_seed": 0,
+  "batch_size": 4,
+  "steps": 6000,
+  "lr": 0.0003,
+  "warmup": 100,
+  "grad_clip": 1.0,
+  "log_every": 25,
+  "eval_every": 2000,
+  "eval_batches": 12,
+  "gen_max_new": 32,
+  "save_ckpt": true,
+  "out_dir": "/vol/llm/b_full_s0"
+ },
+ "git_sha": "d1428d0-dirty",
+ "ckpt": "/vol/llm/b_full_s0/b_full_s0_memory.pt",
+ "results": {
+  "eval_single": {
+   "n": 16,
+   "avg_ctx_tokens": 1127.3125,
+   "nll": {
+    "none": 3.6376065984368324,
+    "swap": 3.7389634400606155,
+    "on": 1.734832800924778,
+    "oracle": 0.13998865173198283
+   },
+   "nll_by_group": {
+    "attr=cost": {
+     "none": 3.102679491043091,
+     "swap": 3.3667168617248535,
+     "on": 1.5569566289583843,
+     "oracle": 0.06839269896348317,
+     "count": 3
+    },
+    "attr=date": {
+     "none": 1.3830619255701702,
+     "swap": 1.648185173670451,
+     "on": 0.644466777642568,
+     "oracle": 0.10509326805671056,
+     "count": 3
+    },
+    "attr=engineer": {
+     "none": 5.296364943186442,
+     "swap": 4.6867867310841875,
+     "on": 2.8548487027486167,
+     "oracle": 0.09796082600951195,
+     "count": 3
+    },
+    "attr=port": {
+     "none": 3.023260474205017,
+     "swap": 4.115231037139893,
+     "on": 1.939706027507782,
+     "oracle": 0.41424595564603806,
+     "count": 2
+    },
+    "attr=serial": {
+     "none": 4.561773109436035,
+     "swap": 4.497577333450318,
+     "on": 1.7418192863464355,
+     "oracle": 0.11939722746610641,
+     "count": 5
+    },
+    "fact_position=early": {
+     "none": 3.3494691451390586,
+     "swap": 3.844672898451487,
+     "on": 1.6960326433181763,
+     "oracle": 0.2068949844688177,
+     "count": 6
+    },
+    "fact_position=late": {
+     "none": 4.447567248344422,
+     "swap": 3.8238608598709107,
+     "on": 1.969277262687683,
+     "oracle": 0.08961316049098969,
+     "count": 5
+    },
+    "fact_position=middle": {
+     "none": 3.1734108924865723,
+     "swap": 3.5272146701812743,
+     "on": 1.546948528289795,
+     "oracle": 0.1100765436887741,
+     "count": 5
+    },
+    "n_colliding=0": {
+     "none": 3.6376065984368324,
+     "swap": 3.7389634400606155,
+     "on": 1.734832800924778,
+     "oracle": 0.13998865173198283,
+     "count": 16
+    },
+    "n_versions=1": {
+     "none": 3.6376065984368324,
+     "swap": 3.7389634400606155,
+     "on": 1.734832800924778,
+     "oracle": 0.13998865173198283,
+     "count": 16
+    }
+   },
+   "examples_on": [
+    {
+     "gold": "20930",
+     "pred": "Service 1",
+     "class": "other"
+    },
+    {
+     "gold": "\u20ac9,380,898",
+     "pred": "$9,898",
+     "class": "other"
+    },
+    {
+     "gold": "December 18, 2023",
+     "pred": "September 12th",
+     "class": "other"
+    },
+    {
+     "gold": "DX-2565-R",
+     "pred": "Gator 9",
+     "class": "other"
+    },
+    {
+     "gold": "Priya Adeyemi",
+     "pred": "Dr. Aris",
+     "class": "other"
+    }
+   ],
+   "generation": {
+    "none": {
+     "correct": 0.0,
+     "other": 1.0
+    },
+    "on": {
+     "correct": 0.0,
+     "other": 1.0
+    },
+    "oracle": {
+     "correct": 1.0,
+     "other": 0.0
+    }
+   },
+   "generation_by_group": {
+    "attr=cost": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "attr=date": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 1
+    },
+    "attr=engineer": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "attr=port": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 1
+    },
+    "attr=serial": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "fact_position=early": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 4
+    },
+    "fact_position=late": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 3
+    },
+    "fact_position=middle": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 1
+    },
+    "n_colliding=0": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 8
+    },
+    "n_versions=1": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 8
+    }
+   }
+  },
+  "eval_overwrite": {
+   "n": 16,
+   "avg_ctx_tokens": 1162.875,
+   "nll": {
+    "none": 2.4135802388191223,
+    "swap": 2.8678090944886208,
+    "on": 1.6300165285356343,
+    "oracle": 0.2481238329783082
+   },
+   "nll_by_group": {
+    "attr=cost": {
+     "none": 2.8529951572418213,
+     "swap": 3.8459067344665527,
+     "on": 2.457970142364502,
+     "oracle": 0.08419590443372726,
+     "count": 2
+    },
+    "attr=date": {
+     "none": 1.2596849501132965,
+     "swap": 1.4740105718374252,
+     "on": 0.8350006500259042,
+     "oracle": 0.21216825395822525,
+     "count": 8
+    },
+    "attr=engineer": {
+     "none": 5.0052995681762695,
+     "swap": 5.127989768981934,
+     "on": 2.914586305618286,
+     "oracle": 0.6465736627578735,
+     "count": 1
+    },
+    "attr=port": {
+     "none": 3.313430607318878,
+     "swap": 4.009115636348724,
+     "on": 1.88173246383667,
+     "oracle": 0.3240094520151615,
+     "count": 4
+    },
+    "attr=serial": {
+     "none": 4.57479190826416,
+     "swap": 5.236595153808594,
+     "on": 4.042802810668945,
+     "oracle": 0.1616320163011551,
+     "count": 1
+    },
+    "fact_position=early": {
+     "none": 4.57479190826416,
+     "swap": 5.236595153808594,
+     "on": 4.042802810668945,
+     "oracle": 0.1616320163011551,
+     "count": 1
+    },
+    "fact_position=late": {
+     "none": 2.1232504579755993,
+     "swap": 2.5293843746185303,
+     "on": 1.42588386270735,
+     "oracle": 0.21156529088815054,
+     "count": 9
+    },
+    "fact_position=middle": {
+     "none": 2.4888729651769004,
+     "swap": 2.9806484977404275,
+     "on": 1.5340844802558422,
+     "oracle": 0.3173769488930702,
+     "count": 6
+    },
+    "gap_kind=long": {
+     "none": 2.434984485308329,
+     "swap": 3.0635163386662803,
+     "on": 1.699018955230713,
+     "oracle": 0.15625684460004172,
+     "count": 3
+    },
+    "gap_kind=medium": {
+     "none": 1.8747245243617467,
+     "swap": 2.397722908428737,
+     "on": 1.2300913844789778,
+     "oracle": 0.25911870173045565,
+     "count": 7
+    },
+    "gap_kind=short": {
+     "none": 3.0315431157747903,
+     "swap": 3.318389356136322,
+     "on": 2.062094649920861,
+     "oracle": 0.28122998028993607,
+     "count": 6
+    },
+    "n_colliding=0": {
+     "none": 2.4135802388191223,
+     "swap": 2.8678090944886208,
+     "on": 1.6300165285356343,
+     "oracle": 0.2481238329783082,
+     "count": 16
+    },
+    "n_versions=2": {
+     "none": 2.4405628641446433,
+     "swap": 2.7616467773914337,
+     "on": 1.6564310596634944,
+     "oracle": 0.21519390617807707,
+     "count": 12
+    },
+    "n_versions=3": {
+     "none": 2.33263236284256,
+     "swap": 3.186296045780182,
+     "on": 1.5507729351520538,
+     "oracle": 0.3469136133790016,
+     "count": 4
+    }
+   },
+   "examples_on": [
+    {
+     "gold": "5569",
+     "pred": "Service 9",
+     "class": "other"
+    },
+    {
+     "gold": "August 16, 2025",
+     "pred": "October 12, 2019",
+     "class": "other"
+    },
+    {
+     "gold": "December 21, 2019",
+     "pred": "September 21, 2019",
+     "class": "other"
+    },
+    {
+     "gold": "January 20, 2024",
+     "pred": "September 15, 2024",
+     "class": "other"
+    },
+    {
+     "gold": "September 22, 2024",
+     "pred": "September 22, 2024",
+     "class": "correct"
+    }
+   ],
+   "generation": {
+    "none": {
+     "correct": 0.0,
+     "other": 1.0,
+     "stale": 0.0
+    },
+    "on": {
+     "correct": 0.125,
+     "other": 0.875,
+     "stale": 0.0
+    },
+    "oracle": {
+     "correct": 0.5,
+     "other": 0.0,
+     "stale": 0.5
+    }
+   },
+   "generation_by_group": {
+    "attr=cost": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 1
+    },
+    "attr=date": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.2,
+      "other": 0.8,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 0.2,
+      "other": 0.0,
+      "stale": 0.8
+     },
+     "count": 5
+    },
+    "attr=port": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 2
+    },
+    "fact_position=late": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 0.6,
+      "other": 0.0,
+      "stale": 0.4
+     },
+     "count": 5
+    },
+    "fact_position=middle": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.3333333333333333,
+      "other": 0.6666666666666666,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 0.3333333333333333,
+      "other": 0.0,
+      "stale": 0.6666666666666666
+     },
+     "count": 3
+    },
+    "gap_kind=long": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 2
+    },
+    "gap_kind=medium": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 0.2,
+      "other": 0.0,
+      "stale": 0.8
+     },
+     "count": 5
+    },
+    "gap_kind=short": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 1.0,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 1.0,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 1
+    },
+    "n_colliding=0": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.125,
+      "other": 0.875,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 0.5,
+      "other": 0.0,
+      "stale": 0.5
+     },
+     "count": 8
+    },
+    "n_versions=2": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.16666666666666666,
+      "other": 0.8333333333333334,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 0.5,
+      "other": 0.0,
+      "stale": 0.5
+     },
+     "count": 6
+    },
+    "n_versions=3": {
+     "none": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "correct": 0.5,
+      "other": 0.0,
+      "stale": 0.5
+     },
+     "count": 2
+    }
+   }
+  },
+  "eval_colliding": {
+   "n": 16,
+   "avg_ctx_tokens": 1217.8125,
+   "nll": {
+    "none": 4.0520700216293335,
+    "swap": 4.907462984323502,
+    "on": 2.667161639779806,
+    "oracle": 0.26495223958045244
+   },
+   "nll_by_group": {
+    "attr=cost": {
+     "none": 3.0302984714508057,
+     "swap": 3.375853180885315,
+     "on": 1.5259450376033783,
+     "oracle": 0.20299701392650604,
+     "count": 4
+    },
+    "attr=date": {
+     "none": 1.3377141952514648,
+     "swap": 1.589876651763916,
+     "on": 1.3205513954162598,
+     "oracle": 0.0915260761976242,
+     "count": 1
+    },
+    "attr=engineer": {
+     "none": 5.630218887329102,
+     "swap": 6.428679943084717,
+     "on": 4.014883422851563,
+     "oracle": 0.4442346915602684,
+     "count": 5
+    },
+    "attr=port": {
+     "none": 3.088299115498861,
+     "swap": 5.402058124542236,
+     "on": 2.3027673761049905,
+     "oracle": 0.22834313660860062,
+     "count": 3
+    },
+    "attr=serial": {
+     "none": 4.6527401606241865,
+     "swap": 5.0255147616068525,
+     "on": 2.7558451493581138,
+     "oracle": 0.14317294458548227,
+     "count": 3
+    },
+    "fact_position=early": {
+     "none": 4.701305760277642,
+     "swap": 5.301297187805176,
+     "on": 3.1208442052205405,
+     "oracle": 0.3549613530437152,
+     "count": 9
+    },
+    "fact_position=late": {
+     "none": 3.583483934402466,
+     "swap": 5.111966848373413,
+     "on": 2.4048027396202087,
+     "oracle": 0.16436567157506943,
+     "count": 5
+    },
+    "fact_position=middle": {
+     "none": 2.3019744157791138,
+     "swap": 2.623949408531189,
+     "on": 1.2814873456954956,
+     "oracle": 0.11137764900922775,
+     "count": 2
+    },
+    "n_colliding=1": {
+     "none": 3.811275601387024,
+     "swap": 4.471387306849162,
+     "on": 1.681664655605952,
+     "oracle": 0.17873665566245714,
+     "count": 6
+    },
+    "n_colliding=3": {
+     "none": 4.351628208160401,
+     "swap": 5.677987432479858,
+     "on": 4.012983679771423,
+     "oracle": 0.21496387273073198,
+     "count": 5
+    },
+    "n_colliding=7": {
+     "none": 4.041465139389038,
+     "swap": 4.660229349136353,
+     "on": 2.503935980796814,
+     "oracle": 0.41839930713176726,
+     "count": 5
+    },
+    "n_versions=1": {
+     "none": 4.0520700216293335,
+     "swap": 4.907462984323502,
+     "on": 2.667161639779806,
+     "oracle": 0.26495223958045244,
+     "count": 16
+    }
+   },
+   "examples_on": [
+    {
+     "gold": "\u20ac5,370,669",
+     "pred": "$3,134.67",
+     "class": "other"
+    },
+    {
+     "gold": "Mateo Okafor",
+     "pred": "Dr. Aris Thorne",
+     "class": "other"
+    },
+    {
+     "gold": "Lukas Kovacs",
+     "pred": "Dr. Aris Thorne",
+     "class": "other"
+    },
+    {
+     "gold": "TJ-8260-K",
+     "pred": "SN-82920-K",
+     "class": "other"
+    },
+    {
+     "gold": "55423",
+     "pred": "Terminal 4",
+     "class": "other"
+    }
+   ],
+   "generation": {
+    "none": {
+     "confused": 0.0,
+     "correct": 0.0,
+     "other": 1.0
+    },
+    "on": {
+     "confused": 0.0,
+     "correct": 0.0,
+     "other": 1.0
+    },
+    "oracle": {
+     "confused": 0.125,
+     "correct": 0.875,
+     "other": 0.0
+    }
+   },
+   "generation_by_group": {
+    "attr=cost": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 1
+    },
+    "attr=engineer": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.3333333333333333,
+      "correct": 0.6666666666666666,
+      "other": 0.0
+     },
+     "count": 3
+    },
+    "attr=port": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 1
+    },
+    "attr=serial": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 3
+    },
+    "fact_position=early": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.25,
+      "correct": 0.75,
+      "other": 0.0
+     },
+     "count": 4
+    },
+    "fact_position=late": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 3
+    },
+    "fact_position=middle": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 1
+    },
+    "n_colliding=1": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 3
+    },
+    "n_colliding=3": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 1.0,
+      "other": 0.0
+     },
+     "count": 3
+    },
+    "n_colliding=7": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.5,
+      "correct": 0.5,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "n_versions=1": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.125,
+      "correct": 0.875,
+      "other": 0.0
+     },
+     "count": 8
+    }
+   }
+  },
+  "eval_colliding_overwrite": {
+   "n": 16,
+   "avg_ctx_tokens": 1275.1875,
+   "nll": {
+    "none": 2.8510748520493507,
+    "swap": 3.7314849346876144,
+    "on": 1.9857476670295,
+    "oracle": 0.3285817694850266
+   },
+   "nll_by_group": {
+    "attr=cost": {
+     "none": 2.8456342816352844,
+     "swap": 3.2465853691101074,
+     "on": 2.284546822309494,
+     "oracle": 0.298974959179759,
+     "count": 4
+    },
+    "attr=date": {
+     "none": 1.2872403661410015,
+     "swap": 1.6860285997390747,
+     "on": 1.1779906402031581,
+     "oracle": 0.307829683025678,
+     "count": 6
+    },
+    "attr=port": {
+     "none": 3.3069297075271606,
+     "swap": 6.932862281799316,
+     "on": 2.4377232789993286,
+     "oracle": 0.37815530598163605,
+     "count": 2
+    },
+    "attr=serial": {
+     "none": 4.974339723587036,
+     "swap": 5.68388032913208,
+     "on": 2.6725962460041046,
+     "oracle": 0.36452994123101234,
+     "count": 4
+    },
+    "fact_position=early": {
+     "none": 2.8061277866363525,
+     "swap": 2.5071685314178467,
+     "on": 2.302443027496338,
+     "oracle": 0.2080029398202896,
+     "count": 1
+    },
+    "fact_position=late": {
+     "none": 3.4550587058067324,
+     "swap": 4.751917695999145,
+     "on": 2.2319972574710847,
+     "oracle": 0.37945145815610887,
+     "count": 10
+    },
+    "fact_position=middle": {
+     "none": 1.6520965576171875,
+     "swap": 1.9354826927185058,
+     "on": 1.4299094140529633,
+     "oracle": 0.25095815807580946,
+     "count": 5
+    },
+    "gap_kind=long": {
+     "none": 3.093700557947159,
+     "swap": 3.934878572821617,
+     "on": 2.1288256719708443,
+     "oracle": 0.3910429775714874,
+     "count": 8
+    },
+    "gap_kind=medium": {
+     "none": 2.4697953263918557,
+     "swap": 2.7729199528694153,
+     "on": 1.6061925043662388,
+     "oracle": 0.22816786790887514,
+     "count": 6
+    },
+    "gap_kind=short": {
+     "none": 3.024410605430603,
+     "swap": 5.793605327606201,
+     "on": 2.5521011352539062,
+     "oracle": 0.37997864186763763,
+     "count": 2
+    },
+    "n_colliding=4": {
+     "none": 2.8510748520493507,
+     "swap": 3.7314849346876144,
+     "on": 1.9857476670295,
+     "oracle": 0.3285817694850266,
+     "count": 16
+    },
+    "n_versions=2": {
+     "none": 3.0963969469070434,
+     "swap": 3.4920103311538697,
+     "on": 2.0142375081777573,
+     "oracle": 0.2920913495123386,
+     "count": 10
+    },
+    "n_versions=3": {
+     "none": 2.442204693953196,
+     "swap": 4.1306092739105225,
+     "on": 1.9382645984490712,
+     "oracle": 0.3893991361061732,
+     "count": 6
+    }
+   },
+   "examples_on": [
+    {
+     "gold": "\u20ac8,754,156",
+     "pred": "$3,494,867",
+     "class": "other"
+    },
+    {
+     "gold": "\u20ac3,350,865",
+     "pred": "$4,714",
+     "class": "other"
+    },
+    {
+     "gold": "OK-5807-Y",
+     "pred": "J-1207-X",
+     "class": "other"
+    },
+    {
+     "gold": "63955",
+     "pred": "Service 8",
+     "class": "other"
+    },
+    {
+     "gold": "FD-8870-J",
+     "pred": "GL-3059-Q",
+     "class": "other"
+    }
+   ],
+   "generation": {
+    "none": {
+     "confused": 0.0,
+     "correct": 0.0,
+     "other": 1.0,
+     "stale": 0.0
+    },
+    "on": {
+     "confused": 0.0,
+     "correct": 0.0,
+     "other": 1.0,
+     "stale": 0.0
+    },
+    "oracle": {
+     "confused": 0.5,
+     "correct": 0.25,
+     "other": 0.0,
+     "stale": 0.25
+    }
+   },
+   "generation_by_group": {
+    "attr=cost": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.3333333333333333,
+      "correct": 0.3333333333333333,
+      "other": 0.0,
+      "stale": 0.3333333333333333
+     },
+     "count": 3
+    },
+    "attr=date": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.5,
+      "correct": 0.5,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 2
+    },
+    "attr=port": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 0.0,
+      "stale": 1.0
+     },
+     "count": 1
+    },
+    "attr=serial": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 1.0,
+      "correct": 0.0,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 2
+    },
+    "fact_position=early": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 1.0,
+      "correct": 0.0,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 1
+    },
+    "fact_position=late": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.5,
+      "correct": 0.0,
+      "other": 0.0,
+      "stale": 0.5
+     },
+     "count": 4
+    },
+    "fact_position=middle": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.3333333333333333,
+      "correct": 0.6666666666666666,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 3
+    },
+    "gap_kind=long": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 1.0,
+      "correct": 0.0,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 2
+    },
+    "gap_kind=medium": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.5,
+      "correct": 0.5,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 4
+    },
+    "gap_kind=short": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 0.0,
+      "stale": 1.0
+     },
+     "count": 2
+    },
+    "n_colliding=4": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.5,
+      "correct": 0.25,
+      "other": 0.0,
+      "stale": 0.25
+     },
+     "count": 8
+    },
+    "n_versions=2": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.6666666666666666,
+      "correct": 0.3333333333333333,
+      "other": 0.0,
+      "stale": 0.0
+     },
+     "count": 6
+    },
+    "n_versions=3": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0,
+      "stale": 0.0
+     },
+     "oracle": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 0.0,
+      "stale": 1.0
+     },
+     "count": 2
+    }
+   }
+  },
+  "eval_haystack": {
+   "n": 16,
+   "avg_ctx_tokens": 3171.5625,
+   "nll": {
+    "none": 2.834519848227501,
+    "on": 2.0411494225263596,
+    "oracle": 0.2784801125526428
+   },
+   "nll_by_group": {
+    "attr=cost": {
+     "none": 2.974371147155762,
+     "on": 1.7161825895309448,
+     "oracle": 0.2249111771583557,
+     "count": 5
+    },
+    "attr=date": {
+     "none": 1.293165349960327,
+     "on": 1.19022376537323,
+     "oracle": 0.275065915286541,
+     "count": 5
+    },
+    "attr=engineer": {
+     "none": 5.267118453979492,
+     "on": 3.794482707977295,
+     "oracle": 0.5040937066078186,
+     "count": 1
+    },
+    "attr=port": {
+     "none": 3.2861889203389487,
+     "on": 3.026026646296183,
+     "oracle": 0.3099714641769727,
+     "count": 3
+    },
+    "attr=serial": {
+     "none": 4.444474935531616,
+     "on": 2.626898169517517,
+     "oracle": 0.26089411973953247,
+     "count": 2
+    },
+    "fact_position=early": {
+     "none": 3.180390170642308,
+     "on": 2.38665395123618,
+     "oracle": 0.32702978381088804,
+     "count": 7
+    },
+    "fact_position=late": {
+     "none": 2.470257895333426,
+     "on": 1.5612971782684326,
+     "oracle": 0.207282332437379,
+     "count": 7
+    },
+    "fact_position=middle": {
+     "none": 2.8988905549049377,
+     "on": 2.5113664269447327,
+     "oracle": 0.35774849355220795,
+     "count": 2
+    },
+    "n_colliding=1": {
+     "none": 2.801717698574066,
+     "on": 2.083823323249817,
+     "oracle": 0.2914101164788008,
+     "count": 4
+    },
+    "n_colliding=15": {
+     "none": 1.6839304566383362,
+     "on": 1.634355515241623,
+     "oracle": 0.30189352110028267,
+     "count": 4
+    },
+    "n_colliding=3": {
+     "none": 3.0771749019622803,
+     "on": 2.2306531369686127,
+     "oracle": 0.2548136096447706,
+     "count": 4
+    },
+    "n_colliding=7": {
+     "none": 3.775256335735321,
+     "on": 2.2157657146453857,
+     "oracle": 0.2658032029867172,
+     "count": 4
+    },
+    "n_docs=16": {
+     "none": 1.6839304566383362,
+     "on": 1.634355515241623,
+     "oracle": 0.30189352110028267,
+     "count": 4
+    },
+    "n_docs=2": {
+     "none": 2.801717698574066,
+     "on": 2.083823323249817,
+     "oracle": 0.2914101164788008,
+     "count": 4
+    },
+    "n_docs=4": {
+     "none": 3.0771749019622803,
+     "on": 2.2306531369686127,
+     "oracle": 0.2548136096447706,
+     "count": 4
+    },
+    "n_docs=8": {
+     "none": 3.775256335735321,
+     "on": 2.2157657146453857,
+     "oracle": 0.2658032029867172,
+     "count": 4
+    },
+    "n_versions=1": {
+     "none": 2.834519848227501,
+     "on": 2.0411494225263596,
+     "oracle": 0.2784801125526428,
+     "count": 16
+    }
+   },
+   "examples_on": [
+    {
+     "gold": "November 21, 2020",
+     "pred": "3, 21",
+     "class": "other"
+    },
+    {
+     "gold": "\u20ac7,182,915",
+     "pred": "$3,250",
+     "class": "other"
+    },
+    {
+     "gold": "\u20ac3,229,558",
+     "pred": "$1,314",
+     "class": "other"
+    },
+    {
+     "gold": "January 1, 2022",
+     "pred": "October 20, 2024",
+     "class": "other"
+    },
+    {
+     "gold": "October 6, 2019",
+     "pred": "September 2024",
+     "class": "other"
+    }
+   ],
+   "generation": {
+    "none": {
+     "confused": 0.0,
+     "correct": 0.0,
+     "other": 1.0
+    },
+    "on": {
+     "confused": 0.0,
+     "correct": 0.0,
+     "other": 1.0
+    },
+    "oracle": {
+     "confused": 0.75,
+     "correct": 0.25,
+     "other": 0.0
+    }
+   },
+   "generation_by_group": {
+    "attr=cost": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.8,
+      "correct": 0.2,
+      "other": 0.0
+     },
+     "count": 5
+    },
+    "attr=date": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.6666666666666666,
+      "correct": 0.3333333333333333,
+      "other": 0.0
+     },
+     "count": 3
+    },
+    "fact_position=early": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 1.0,
+      "correct": 0.0,
+      "other": 0.0
+     },
+     "count": 4
+    },
+    "fact_position=late": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.3333333333333333,
+      "correct": 0.6666666666666666,
+      "other": 0.0
+     },
+     "count": 3
+    },
+    "fact_position=middle": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 1.0,
+      "correct": 0.0,
+      "other": 0.0
+     },
+     "count": 1
+    },
+    "n_colliding=1": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.5,
+      "correct": 0.5,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "n_colliding=15": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.5,
+      "correct": 0.5,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "n_colliding=3": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 1.0,
+      "correct": 0.0,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "n_colliding=7": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 1.0,
+      "correct": 0.0,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "n_docs=16": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.5,
+      "correct": 0.5,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "n_docs=2": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.5,
+      "correct": 0.5,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "n_docs=4": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 1.0,
+      "correct": 0.0,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "n_docs=8": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 1.0,
+      "correct": 0.0,
+      "other": 0.0
+     },
+     "count": 2
+    },
+    "n_versions=1": {
+     "none": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "on": {
+      "confused": 0.0,
+      "correct": 0.0,
+      "other": 1.0
+     },
+     "oracle": {
+      "confused": 0.75,
+      "correct": 0.25,
+      "other": 0.0
+     },
+     "count": 8
+    }
+   }
+  },
+  "eval_absent": {
+   "n": 16,
+   "avg_ctx_tokens": 1158.375,
+   "examples_on": [
+    {
+     "gold": "unknown",
+     "pred": "FUM-994-Z",
+     "class": "hallucinated"
+    },
+    {
+     "gold": "unknown",
+     "pred": "$7,850",
+     "class": "hallucinated"
+    },
+    {
+     "gold": "unknown",
+     "pred": "Port 4",
+     "class": "hallucinated"
+    },
+    {
+     "gold": "unknown",
+     "pred": "September 2020",
+     "class": "hallucinated"
+    },
+    {
+     "gold": "unknown",
+     "pred": "September 28",
+     "class": "hallucinated"
+    }
+   ],
+   "generation": {
+    "none": {
+     "hallucinated": 1.0
+    },
+    "on": {
+     "hallucinated": 1.0
+    },
+    "oracle": {
+     "hallucinated": 1.0
+    }
+   },
+   "generation_by_group": {
+    "attr=cost": {
+     "none": {
+      "hallucinated": 1.0
+     },
+     "on": {
+      "hallucinated": 1.0
+     },
+     "oracle": {
+      "hallucinated": 1.0
+     },
+     "count": 2
+    },
+    "attr=date": {
+     "none": {
+      "hallucinated": 1.0
+     },
+     "on": {
+      "hallucinated": 1.0
+     },
+     "oracle": {
+      "hallucinated": 1.0
+     },
+     "count": 2
+    },
+    "attr=port": {
+     "none": {
+      "hallucinated": 1.0
+     },
+     "on": {
+      "hallucinated": 1.0
+     },
+     "oracle": {
+      "hallucinated": 1.0
+     },
+     "count": 1
+    },
+    "attr=serial": {
+     "none": {
+      "hallucinated": 1.0
+     },
+     "on": {
+      "hallucinated": 1.0
+     },
+     "oracle": {
+      "hallucinated": 1.0
+     },
+     "count": 3
+    },
+    "fact_position=middle": {
+     "none": {
+      "hallucinated": 1.0
+     },
+     "on": {
+      "hallucinated": 1.0
+     },
+     "oracle": {
+      "hallucinated": 1.0
+     },
+     "count": 8
+    },
+    "n_colliding=1": {
+     "none": {
+      "hallucinated": 1.0
+     },
+     "on": {
+      "hallucinated": 1.0
+     },
+     "oracle": {
+      "hallucinated": 1.0
+     },
+     "count": 4
+    },
+    "n_colliding=2": {
+     "none": {
+      "hallucinated": 1.0
+     },
+     "on": {
+      "hallucinated": 1.0
+     },
+     "oracle": {
+      "hallucinated": 1.0
+     },
+     "count": 4
+    },
+    "n_versions=0": {
+     "none": {
+      "hallucinated": 1.0
+     },
+     "on": {
+      "hallucinated": 1.0
+     },
+     "oracle": {
+      "hallucinated": 1.0
+     },
+     "count": 8
+    }
+   }
+  }
+ },
+ "run": "b_full_s0",
+ "tag": "dryrun"
+}

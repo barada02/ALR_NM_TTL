@@ -63,6 +63,31 @@ def train_llm(cfg_dict: dict, sha: str = "") -> dict:
     return res
 
 
+EVAL_SETS = ["eval_single", "eval_overwrite", "eval_colliding", "eval_colliding_overwrite", "eval_haystack", "eval_absent"]
+
+
+@app.function(image=image, gpu=GPU, cpu=4.0, memory=32768, timeout=4 * 60 * 60,
+              volumes={"/data": data_vol, "/cache": cache_vol, "/vol": res_vol})
+def eval_llm(run: str, files: list, gen_n: int = 100, max_new: int = 24, limit: int = 0, tag: str = "zeroshot", sha: str = "") -> dict:
+    """Score a trained checkpoint (/vol/llm/<run>/) on annotated eval sets from the data volume (/data/miniTitan_eval/)."""
+    sys.path.insert(0, REMOTE_SRC)
+    from llm_config import LLMConfig
+    from llm_eval import run_eval
+
+    saved = json.load(open(f"/vol/llm/{run}/result.json"))
+    cfg = LLMConfig(**saved["config"])
+    cfg.max_ctx_segments = 64                          # haystacks are far longer than the 8-segment training documents
+    paths = [f"/data/miniTitan_eval/{f}.jsonl" for f in files]
+    res = run_eval(cfg, f"/vol/llm/{run}/{run}_memory.pt", paths, gen_n=gen_n, max_new=max_new, limit=limit, sha=sha)
+    res["run"], res["tag"] = run, tag
+    os.makedirs("/vol/llm_eval", exist_ok=True)
+    with open(f"/vol/llm_eval/{run}__{tag}.json", "w") as f:
+        json.dump(res, f)
+    res_vol.commit()
+    cache_vol.commit()
+    return res
+
+
 def _git_sha() -> str:
     try:
         sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
@@ -72,6 +97,21 @@ def _git_sha() -> str:
         return sha + ("-dirty" if dirty else "")
     except Exception:
         return "unknown"
+
+
+@app.local_entrypoint()
+def eval_main(run: str, files: str = "all", gen: int = 100, max_new: int = 24, limit: int = 0, tag: str = "zeroshot"):
+    sys.path.insert(0, HERE)
+    from llm_eval import summarize_eval
+
+    names = EVAL_SETS if files == "all" else files.split(",")
+    res = eval_llm.remote(run, names, gen, max_new, limit, tag, _git_sha())
+    out_dir = os.path.join(ROOT, "results", "llm_eval")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"{run}__{tag}.json")
+    with open(path, "w") as f:
+        json.dump(res, f, indent=1)
+    print(f"saved {path}\n{summarize_eval(res)}")
 
 
 @app.local_entrypoint()

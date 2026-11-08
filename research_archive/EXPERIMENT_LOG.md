@@ -14,6 +14,9 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
   The fix — **next-token values (`shift_v`) + crop-around-the-fact curriculum + long gradient window** (E7b) — gives, after 6000 steps (E7c): long-context answer NLL
   **3.67 (no memory) → 1.10±0.03** (generic adapter alone: 2.15; full-context oracle 0.62); wrong document → 3.82; key-detail recall 0.50 (oracle 0.83, none 0.04).
 - **Where things run:** everything on **Modal** (`launch.py`). Do not run models locally.
+- **Stage 0 verdict (E11) — a refinement of the main claim:** zero-shot on a NEW generator style, model v1 still gains document-specific NLL (single 3.54 → 1.88, wrong document 4.02) but it is **at chance at entity-value
+  binding**: current-value ranking vs colliding values 0.33 (chance 0.33), haystack 0.31 (0.31), overwrite 0.51 (0.45); exact generation ≈ 0 even on the single-fact control. So the memory carries *which values the document contains*
+  (content / format), not *which entity owns which value*. Training data had almost no collisions or overwrites, so binding was never required; the next step is TRAINING on programmatic overwrite / colliding data (Stage 2).
 - **Goal (decided):** a workshop-style *mechanism* paper (not a deployable context-extension method). External review (2 independent engineers) ranked the open risks — see "Open items".
 - **Interference (E8):** overwrite works but ~75-94% of its errors are STALE values, caused by lost write order inside a chunk (smaller chunks fix it). At matched state size the 2-layer
   MLP memory ties a linear memory on distinct-key overwrite but beats it on colliding keys (0.72 vs 0.49) and on long streams (0.69 vs 0.41).
@@ -73,6 +76,8 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
 | E7a | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | **mid** insertion + window 8 best. But **swap control: 95–99% of the gain is a generic adapter** (no recall) | Gate 2b not passed; diagnose |
 | E9 | LLM paired controls: document-free adapter + adapter-matched oracle (`paired_ctl`) | Fair ceiling is far lower than the old oracle (long-context 0.06 vs 0.62). Memory beats the doc-free adapter by +0.96 / +0.26 / +0.48 NLL; closes 48% / 23% / 33% of the fair gap | Report ON vs doc-free adapter and the fair gap; drop the old "% of oracle gap" |
+| E11 | Stage 0: zero-shot eval of model v1 on programmatic overwrite / colliding / haystack / absent sets (new style) — NLL, generation, likelihood ranking | NLL gains document-specific (wrong doc worse than none) but entity binding at chance (0.33 vs 0.33; haystack 0.31); exact generation ≈ 0; the frozen oracle itself is stale 37% / confused 22-45% | Train on overwrite/colliding data (Stage 2); report binding by ranking, not generation |
+| E10 | LLM chunk/width screen (`fix_d`) + standalone gated DeltaNet at matched state | chunk 32/16/8: long-ctx NLL 1.46/1.40/1.43 (no effect, 1.6-2.8× cost). Width 256/512/1024: 1.46/1.32/1.28 (diminishing). Gated DeltaNet: best at plain overwrite (0.97 vs 0.73), far worse on capacity (0.08-0.19 vs 0.69 @512 facts) and colliding keys | Keep model v1 = hidden 256, chunk 32; DeltaNet baseline done |
 | E8 | Overwrite / colliding keys (`upd_*`), linear-memory ablation (`lin_stream`), why errors are stale (`upd_diag`) | Memory survives interference; errors are stale values from lost within-chunk order (C 16→4: stale 0.24→0.05). MLP ≈ linear on distinct keys, MLP ≫ linear on colliding keys / long streams at matched state | Use small chunks for update-heavy data; DeltaNet baseline still owed |
 | E7c | Stage B: recipe at 6000 steps, full BPTT vs window 32, 3 seeds | **long-context NLL 1.10±0.03 / 1.15±0.01** (none 3.67, swap 3.82, oracle 0.62); agentic ON 2.41 ≈ oracle 2.42; pref-acc 0.91 vs swap 0.81 | **Gate 2b passed**; use full BPTT + crop + shift_v |
 | E7b | Fixes: crop curriculum, contrastive swap loss, next-token values (`shift_v`) | crop / contrast alone: no recall (contrast is gameable). **`shift_v` + crop + window ≥16: ON 1.79 vs generic 2.15, 3 seeds; full BPTT 1.42; control without `shift_v` 2.18** | Recipe found; Gate 2b passes |
@@ -224,7 +229,66 @@ Reading. (1) The document-specific gain is real and large relative to seed noise
 near-deterministic), so the memory closes about half — not 84% — of the fair gap on long-context, and a quarter to a third on dialogue / agentic. (3) The earlier generic-adapter reference (2.15 / 2.05 / 2.97) was
 close to the paired one (2.06 / 1.98 / 2.88), so the E7 conclusions stand. (4) The remaining gap is the headline for improvement; capacity of the 459K-float state is the first suspect (E8: accuracy tracks state size).
 
+### E10 — LLM chunk/width screen and the standalone gated DeltaNet (done)
+**LLM screen** (`fix_d`: 1 seed, 3000 steps, 300 val/type; gradient window held at ~1024 tokens so only chunk size changes; reference on the same val set: document-free adapter 2.06 / 1.98 / 2.88, adapter-matched oracle 0.06 / 0.86 / 1.46):
+```
+run      chunk window hidden  fast-state floats  params   s/step  peak GB | long_context  dialogue  agentic | detail-recall
+d_c32      32    32    256       458,752          3.90M     0.22     8.1   |    1.46         1.92      2.70    |   0.41
+d_c16      16    64    256       458,752          3.90M     0.35    10.0   |    1.40         1.90      2.63    |   0.41
+d_c8        8   128    256       458,752          3.90M     0.61    13.8   |    1.43         1.90      2.65    |   0.40
+d_h512     32    32    512       917,504          4.36M     0.24    10.0   |    1.32         1.86      2.59    |   0.47
+d_h1024    32    32   1024     1,835,008          5.28M     0.29    13.8   |    1.28         1.84      2.56    |   0.47
+(for scale: Stage B, same recipe, 6000 steps, 3 seeds: 1.15 ± 0.01 → training length mattered more than either lever)
+```
+Chunk size: no effect on document recall (differences 0.03-0.06 ≈ 1-2 seed-noise widths) at 1.6× / 2.8× the time → keep 32; also no clear effect on zero-shot overwrite (see E11). Width: −0.14 NLL for 2× state, −0.18 for 4× state — a modest, diminishing lever,
+not what closes the gap to the oracle. **Model v1 = Stage B (hidden 256, chunk 32, full BPTT, 6000 steps; 3 seeds).**
+
+**Standalone gated DeltaNet** (`deltanet.py`; S_t = α_t S_{t-1}(I − β_t k_t k_tᵀ) + β_t v_t k_tᵀ, one 128×128 state; 32,898 params, 16,384 state floats — matched to Mode B's 36,292 / 16,384 on BOTH axes; sanity: exact delta-rule overwrite, causal in both
+read orders, gradients reach all parameters). Two read orders (standard read-after-write; read-before-write as in our module) and two decay inits (per-token bias 4 → half-life 38 tokens; bias 7 ≈ Mode B's per-chunk retention): results identical across both decay inits,
+so decay is not what limits it. 3 seeds each, same E6 recipe:
+```
+                                  overwrite K16R4  K64R8 | colliding K16R1  K16R4  K64R8 | stream acc@64 / @256 / @512
+Mode B 2-layer MLP (chunk 16)         0.73         0.49   |      1.00        0.72   0.46  |  1.00 / 0.88 / 0.69
+linear memory d=128 (same state)      0.72         0.42   |      0.82        0.49   0.22  |  0.99 / 0.67 / 0.41
+gated DeltaNet (read-first)           0.98         0.20   |      0.79        0.61   0.07  |  0.91 / 0.42 / 0.19
+gated DeltaNet (read-after)           0.97         0.11   |      0.80        0.63   0.10  |  0.90 / 0.33 / 0.08
+```
+At matched state and parameters the two are strong in different places: the DeltaNet is far better at plain overwrite (token-level updates, stale rate 0.01 — it beats even Mode B at chunk 4, 0.93, and confirms E8: chunking causes the stale values), while Mode B is far better on
+capacity (512-fact stream 0.69 vs 0.08-0.19) and on similar keys (colliding K16R1 1.00 vs 0.80). So the claim "nonlinear deep memory buys something over a linear delta-rule state" is supported under interference and at capacity, at the same state size and fewer parameters.
+Caveat: one head, one state size, trained at short lengths.
+
+### E11 — Stage 0: zero-shot evaluation of model v1 on programmatic sets (done)
+Sets (`data_generation/programmatic_eval.py`, seed 2024, 1,700 records, every invariant verified; template prose = a style nobody trained on): single (300), overwrite (300), colliding (300; 2/4/8 same-type facts), colliding_overwrite (200), haystack (400; target wrapped in 2/4/8/16
+documents that contain a COLLIDING fact), absent (200). Model v1, 3 seeds, zero-shot (the model never saw an overwrite, a collision or this prose). Runner: `launch.py eval <run>`.
+```
+answer NLL                  none         wrong doc    MEMORY       frozen oracle
+single                      3.54         4.02±0.14    1.88±0.04    0.15
+overwrite                   3.27         3.76±0.14    1.69±0.04    0.24
+colliding                   3.75         4.31±0.07    2.33±0.08    0.25      (NLL by #colliders 1/3/7: 2.14 / 2.28 / 2.56)
+colliding_overwrite         3.41         4.06±0.19    2.14±0.07    0.36
+haystack (2/4/8/16 docs)    3.67         —            2.37±0.03    0.34      (2.05 / 2.58 / 2.41 / 2.46)
+
+likelihood ranking: share of items whose lowest-NLL candidate is the CURRENT value (candidates: current + old values + distractor values, ≤4)
+                       chance   none        MEMORY       frozen oracle
+overwrite               0.45    0.45        0.51±0.01    0.67
+colliding               0.33    0.33        0.33±0.02    0.78      (by #colliders 1/3/7: 0.50 / 0.27 / 0.23 — exactly chance 0.50 / 0.25 / 0.12)
+colliding_overwrite     0.25    0.22        0.26±0.02    0.53
+haystack                0.31    0.29        0.31±0.02    0.68
+greedy generation, memory: correct 0.00-0.02 on every set (single-fact control included); 95-100% "other" — plausible-format values, never the real one
+  e.g. gold `December 18, 2023` → `September 12th`;  gold `Lukas Kovacs` → `Dr. Aris Thorne`.   Frozen oracle: single 0.95 correct; overwrite 0.63 correct / 0.37 STALE; colliding 0.78 / 0.22 confused; haystack 0.55 / 0.45 confused.
+absent-fact questions: answers containing a value-like string — none 0.95, memory 0.80, oracle 0.99 (nobody was trained to abstain; this is a baseline, not a result)
+```
+Reading. (1) The document-specific NLL gain transfers to a new generator style (wrong document is WORSE than no memory). (2) But the memory does **not bind values to entities**: it cannot tell the asked entity's value from a colliding one (ranking = chance at every
+collision level) and prefers the current value over old ones only barely above chance. The NLL gain therefore reflects *which values/formats the document contains*. (3) Exact recall does not transfer across generators (in-distribution detail recall 0.50 → zero-shot ≈ 0). (4) The training data
+had almost no collisions or overwrites, so binding was never required — this is a training-signal gap, consistent with the data-diversity argument, not evidence against the architecture. (5) Chunk size 32 / 16 / 8 (3000-step models): current-value ranking on overwrite 0.55 / 0.52 / 0.54 and on
+colliding_overwrite 0.24 / 0.28 / 0.30 (n=200, SE ≈ 0.03) — a suggestive trend, not significant; the real test needs overwrite TRAINING data. (6) The frozen full-attention oracle is itself stale 37% of the time and confused 22-45%: these sets are hard even with full context.
+**Correction to earlier claims:** the swap control (E7/E9) proves document identity, not entity-value binding; "document-specific recall" should be read as "document-specific content".
+
 ## Decisions since the second review
+- Stage 0 is done on model v1 (E11); the next stage is Stage 2 — TRAIN on programmatic overwrite / colliding data (cheap, exact ground truth, no API) mixed with the Gemini data, hold out attributes / templates, re-evaluate with ranking; chunk size becomes testable then.
+- Generator diversity: held-out family via Fireworks serverless open-weight models (key `FIREWORKS_API_KEY` in `.env`, never printed), after Stage 2.
+
+## Decisions between the second review and Stage 0
 - Chunk size is a first-class variable before "model v1" is frozen (E8: chunk 16 → 4 lifts overwrite accuracy 0.72 → 0.95); screened at LLM scale together with memory width in `fix_d`
   (chunk 32/16/8 with a constant ~1024-token gradient window; hidden 256/512/1024) — 1 seed to screen, 3 to confirm; width is a MEASUREMENT (the earlier synthetic width sweep moved acc@512 only 0.43 → ~0.46) and is reported per unit
   of fast state (2·hidden·896 floats: 0.46M / 0.92M / 1.8M).
@@ -232,9 +296,9 @@ close to the paired one (2.06 / 1.98 / 2.88), so the E7 conclusions stand. (4) T
 - Gated DeltaNet runs in parallel on the synthetic side; it gates the Qwen2-1.5B decision, not the LLM evals. Stage 0 evals (programmatic overwrite / colliding facts / colliding haystacks / absent-fact) run after "model v1" is locked.
 
 ## Open items (from two external reviews, ranked)
-1. Standalone gated DeltaNet (state-matched) on the synthetic tasks — required before submission; `lin_b_d128` is only a linear associative memory.
+1. ~~Standalone gated DeltaNet~~ — DONE (E10): state- and parameter-matched; better at plain overwrite, far worse at capacity / similar keys.
 2. ~~LLM paired controls~~ — DONE (E9). Report ON vs the document-free adapter and the fair gap closed (48% / 23% / 33%); never the old "% of oracle gap".
-3. Haystack with COLLIDING keys (same entity, different value), not just longer documents; then 16-64 segments, framed as "context storage stops growing" (do NOT quote a KV-cache break-even number).
+3. ~~Haystack with colliding keys~~ — built and evaluated zero-shot (E11, up to 16 documents ≈ 3K tokens); longer (32-64 segments) after Stage 2. Frame as "context storage stops growing"; never quote a KV-cache break-even number.
 4. Held-out generator / topics, then a public benchmark (RULER / BABILong) in TWO tiers, both reported: zero-shot transfer and after a short adaptation with the same budget given to baselines.
 5. Code nits: with `shift_v` the last token of a segment pairs with the first of the next (mask the write at segment ends); retention is one scalar per chunk shared by all layers; generation re-runs the whole
    pipeline per token (eval-code limitation); context truncation keeps the start (affects ~1% of docs).
