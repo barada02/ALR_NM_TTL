@@ -17,6 +17,9 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
 - **Stage 0 verdict (E11) — a refinement of the main claim:** zero-shot on a NEW generator style, model v1 still gains document-specific NLL (single 3.54 → 1.88, wrong document 4.02) but it is **at chance at entity-value
   binding**: current-value ranking vs colliding values 0.33 (chance 0.33), haystack 0.31 (0.31), overwrite 0.51 (0.45); exact generation ≈ 0 even on the single-fact control. So the memory carries *which values the document contains*
   (content / format), not *which entity owns which value*. Training data had almost no collisions or overwrites, so binding was never required; the next step is TRAINING on programmatic overwrite / colliding data (Stage 2).
+- **Stage 2 outcome (E12, pre-registered test): criteria 1 and 2 FAIL.** Training on 25% colliding + 15% overwrite programmatic data did not teach entity-value binding (colliding ranking seen 0.31 / held-out 0.34; chance 0.33)
+  and mixing it in broke document recall in 2 of 3 seeds (Gemini long-context NLL 2.64 / 2.72 / 1.53 vs 1.10; wrong-doc = right-doc in the two collapsed seeds). By the pre-registered rule H_data is not supported, but the result is
+  CONFOUNDED by that collapse — next: remove the confound (fine-tune from model v1) before concluding "architecture limit".
 - **Goal (decided):** a workshop-style *mechanism* paper (not a deployable context-extension method). External review (2 independent engineers) ranked the open risks — see "Open items".
 - **Interference (E8):** overwrite works but ~75-94% of its errors are STALE values, caused by lost write order inside a chunk (smaller chunks fix it). At matched state size the 2-layer
   MLP memory ties a linear memory on distinct-key overwrite but beats it on colliding keys (0.72 vs 0.49) and on long streams (0.69 vs 0.41).
@@ -76,6 +79,7 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
 | E7a | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | **mid** insertion + window 8 best. But **swap control: 95–99% of the gain is a generic adapter** (no recall) | Gate 2b not passed; diagnose |
 | E9 | LLM paired controls: document-free adapter + adapter-matched oracle (`paired_ctl`) | Fair ceiling is far lower than the old oracle (long-context 0.06 vs 0.62). Memory beats the doc-free adapter by +0.96 / +0.26 / +0.48 NLL; closes 48% / 23% / 33% of the fair gap | Report ON vs doc-free adapter and the fair gap; drop the old "% of oracle gap" |
+| E12 | Stage 2 (pre-registered): train on colliding / overwrite / single programmatic data, 50/25/15/10 mixture, 3 seeds + dose + control arms | Binding not learned (colliding ranking seen 0.31, held-out 0.34 vs chance 0.33); 2/3 seeds lost document recall (generic adapter); the one healthy seed gets overwrite 0.94 (a surface cue, not binding); single-fact control 1.36 NLL, colliding 0.38 | Criteria 1+2 FAIL; confounded by recall collapse → fine-tune from model v1, probe the overwrite cue |
 | E11 | Stage 0: zero-shot eval of model v1 on programmatic overwrite / colliding / haystack / absent sets (new style) — NLL, generation, likelihood ranking | NLL gains document-specific (wrong doc worse than none) but entity binding at chance (0.33 vs 0.33; haystack 0.31); exact generation ≈ 0; the frozen oracle itself is stale 37% / confused 22-45% | Train on overwrite/colliding data (Stage 2); report binding by ranking, not generation |
 | E10 | LLM chunk/width screen (`fix_d`) + standalone gated DeltaNet at matched state | chunk 32/16/8: long-ctx NLL 1.46/1.40/1.43 (no effect, 1.6-2.8× cost). Width 256/512/1024: 1.46/1.32/1.28 (diminishing). Gated DeltaNet: best at plain overwrite (0.97 vs 0.73), far worse on capacity (0.08-0.19 vs 0.69 @512 facts) and colliding keys | Keep model v1 = hidden 256, chunk 32; DeltaNet baseline done |
 | E8 | Overwrite / colliding keys (`upd_*`), linear-memory ablation (`lin_stream`), why errors are stale (`upd_diag`) | Memory survives interference; errors are stale values from lost within-chunk order (C 16→4: stale 0.24→0.05). MLP ≈ linear on distinct keys, MLP ≫ linear on colliding keys / long streams at matched state | Use small chunks for update-heavy data; DeltaNet baseline still owed |
@@ -311,6 +315,38 @@ Baseline = model v1 (Stage B, 3 seeds), measured on the same seen / held-out set
 **Decision rules.** (a) 1 and 2 hold → H_data supported, binding generalises across held-out templates / entities → proceed to the Fireworks held-out generator family and a public benchmark. (b) Seen passes, held-out fails
 → binding is learned but template-specific → more template / generator diversity is the lever. (c) Seen colliding ranking ≤ 0.40 → H_data rejected: the limit is architectural / representational (e.g. keys derived from a single mid-layer token
 position cannot carry the entity), and the next work is the key/value construction, not data. (d) Criterion 2 fails → the programmatic data is hurting the original distribution; lower the programmatic share.
+
+### E12 — Stage 2 outcome against the pre-registration (done; not edited retroactively)
+Runs: `s2_mix50` ×3 seeds, `s2_mix25`, `s2_single50`, (`s2_mix50_c8` still training when this was written). Baseline for the new splits: model v1 (Stage B, 3 seeds): colliding ranking seen 0.35 / held-out 0.30,
+overwrite 0.48 / 0.46, colliding_overwrite 0.25 / 0.24, haystack 0.36 / 0.31 — all at chance.
+```
+current-value ranking             chance  model v1      s2_mix50 (3 seeds)   per seed             mix25   single50   frozen oracle
+seen    colliding                  0.33   0.35±0.03     0.31±0.05            0.28 / 0.29 / 0.38   0.33    0.38       0.86
+seen    overwrite                  0.45   0.48±0.02     0.63±0.27            0.48 / 0.46 / 0.94   0.55    0.63       0.76
+seen    colliding_overwrite        0.25   0.25±0.02     0.37±0.25            0.26 / 0.20 / 0.66   0.28    0.30       0.52
+seen    haystack                   0.31   0.36±0.01     0.37±0.04            0.37 / 0.33 / 0.41   0.33    0.42       0.88
+heldout colliding                  0.33   0.30±0.03     0.34±0.04            0.30 / 0.34 / 0.37   0.30    0.33       0.71
+heldout overwrite                  0.46   0.46±0.01     0.57±0.17            0.46 / 0.48 / 0.76   0.54    0.62       0.62
+heldout colliding_overwrite        0.25   0.24±0.02     0.35±0.17            0.26 / 0.24 / 0.55   0.27    0.38       0.47
+heldout haystack                   0.31   0.31±0.01     0.36±0.09            0.31 / 0.32 / 0.46   0.28    0.41       0.80
+Gemini long-context NLL (300 val, same split as Stage B 1.10±0.03):  s2_mix50 2.64 / 2.72 / 1.53 (mean 2.30) · mix25 2.01 · single50 1.36
+wrong-document NLL vs right-document NLL (document-specific gain): s2_mix50 seed 0: 2.65 vs 2.64 (+0.01) · seed 1: 2.72 vs 2.72 (0.00) · seed 2: 3.45 vs 1.53 (+1.92) · mix25: +0.52 · single50: +2.38
+```
+**Pre-registered criteria:** (1) colliding ranking ≥0.55 seen / ≥0.45 held-out: **FAIL** (0.31 / 0.34). (2) Gemini long-context NLL ≤1.15: **FAIL** (2.30). (3) control must not reach (1): PASS (0.38, vacuous because (1) fails for every arm).
+By decision rule (c) ("seen colliding ranking ≤0.40 → H_data rejected") the data-gap hypothesis is NOT supported. **Why this is not yet a clean verdict (stated before anyone reads "architecture limit" into it):**
+1. *Recall collapsed in 2 of 3 seeds.* Seeds 0 and 1 have wrong-document NLL = right-document NLL: the memory fell back to a generic adapter (the Stage A failure). A model that has lost document recall cannot learn binding; those seeds cannot
+   test H_data. Plausible cause: the programmatic documents are uncropped (the crop curriculum was applied only to Gemini documents) and full-BPTT second-order training on 1300-token documents from step 0 does not take off — the same
+   take-off problem E6 cured with a curriculum. The mixture itself also hurts: even the clean-single control loses 0.26 NLL (1.36 vs 1.10) and mix25 loses 0.9.
+2. *The one healthy seed (2) still shows no binding:* colliding ranking 0.38 (by #colliders 1/3/7: 0.58 / 0.25 / 0.30 vs chance 0.50 / 0.25 / 0.12 — a signal only at a single collider). So the straightforward data fix did not produce binding even when recall survived.
+3. *The overwrite numbers are probably a cue, not binding.* Seed 2 reaches 0.94 on seen overwrite — above the frozen oracle (0.76) — and 0.76 on held-out overwrite although the held-out restatement templates are new; but they still contain
+   "now" / "new". The single-fact control reaches 0.63 on overwrite with NO overwrite data, consistent with the memory's inherent preference for later writes. None of this is entity binding (colliding stays at chance).
+4. *Seed spread is huge* (overwrite 0.48 / 0.46 / 0.94): never report these means without the per-seed values.
+**What this changes.** The easy explanation ("it just never saw collisions") is not enough: with 10.6K colliding examples the best seed is still ≈ chance on binding. The architecture-limit explanation is plausible (keys come from a single frozen mid-layer
+token position; the entity may not be recoverable from that vector) but is NOT proven because of the collapse. **Next (proposed, needs the owner's go-ahead, each with its own pre-registered criteria):**
+(a) fine-tune FROM model v1 (init from the Stage B checkpoint, lower lr) on the same mixture — removes the take-off confound and tests binding on top of working recall; (b) probe the overwrite cue: evaluate overwrite with cue-free restatements
+(no "now" / "new" / "changed") and with the old/new order swapped; (c) a mechanistic probe of the key: is the queried entity recoverable from the key vector at the answer position (linear probe / retrieval at the FIRST value token only);
+(d) if (a)-(c) stay at chance, design the key construction (e.g. entity-aware keys from several positions) — a method change, not more data.
+Cost note: this stage ran on Modal GPUs only (no Gemini / Fireworks / any API); 6 training runs + 9 eval jobs.
 
 ## Decisions between the second review and Stage 0
 - Chunk size is a first-class variable before "model v1" is frozen (E8: chunk 16 → 4 lifts overwrite accuracy 0.72 → 0.95); screened at LLM scale together with memory width in `fix_d`

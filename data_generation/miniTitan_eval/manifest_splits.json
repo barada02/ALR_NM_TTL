@@ -1,0 +1,55 @@
+{
+ "version": "programmatic_eval_v2",
+ "files": {
+  "eval_seen_single": {
+   "n": 300,
+   "pools": "train",
+   "seed": 4242
+  },
+  "eval_seen_overwrite": {
+   "n": 300,
+   "pools": "train",
+   "seed": 4242
+  },
+  "eval_seen_colliding": {
+   "n": 300,
+   "pools": "train",
+   "seed": 4242
+  },
+  "eval_seen_colliding_overwrite": {
+   "n": 200,
+   "pools": "train",
+   "seed": 4242
+  },
+  "eval_seen_haystack": {
+   "n": 200,
+   "pools": "train",
+   "seed": 4242
+  },
+  "eval_heldout_single": {
+   "n": 300,
+   "pools": "heldout",
+   "seed": 4343
+  },
+  "eval_heldout_overwrite": {
+   "n": 300,
+   "pools": "heldout",
+   "seed": 4343
+  },
+  "eval_heldout_colliding": {
+   "n": 300,
+   "pools": "heldout",
+   "seed": 4343
+  },
+  "eval_heldout_colliding_overwrite": {
+   "n": 200,
+   "pools": "heldout",
+   "seed": 4343
+  },
+  "eval_heldout_haystack": {
+   "n": 200,
+   "pools": "heldout",
+   "seed": 4343
+  }
+ }
+}
