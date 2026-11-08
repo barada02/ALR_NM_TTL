@@ -126,8 +126,16 @@ class SegmentedMemoryLM(nn.Module):
         h = self.question_hidden(b["ids"], b["write"], mode)
         return self._token_logp(h, b)
 
-    def oracle_logp(self, b) -> torch.Tensor:
-        h = self.lm.model(input_ids=b["ids"], attention_mask=b["mask"], use_cache=False).last_hidden_state
+    def oracle_logp(self, b, adapter: bool = False) -> torch.Tensor:
+        """Full-attention reference. adapter=True also runs the memory module with writes disabled (a generic adapter with the same
+        capacity as the real model but no document memory) → the adapter-matched oracle."""
+        if adapter:
+            B, T = b["ids"].shape
+            self._ctx = {"mode": "off", "B": B, "write": torch.zeros(B, T, device=b["ids"].device)}
+        try:
+            h = self.lm.model(input_ids=b["ids"], attention_mask=b["mask"], use_cache=False).last_hidden_state
+        finally:
+            self._ctx = None
         return self._token_logp(h, b)
 
     # ── generation (greedy, autoregressive; fixes P4) ─────────────────────────

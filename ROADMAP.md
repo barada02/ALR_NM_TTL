@@ -123,3 +123,4 @@ markmap:
 - LLM Stage B (3 seeds): long-context NLL 3.67 → 1.10±0.03 (generic adapter 2.15, oracle 0.62), wrong doc 3.82, no decay with distance; oracle is not adapter-matched → % of gap over-credits
 - E8 interference: overwrite errors are STALE values (75-94%) from lost within-chunk write order (chunk 16→4: stale 0.24→0.05); MLP ≈ linear on distinct-key overwrite but MLP 0.72 vs linear 0.49 on colliding keys and 0.69 vs 0.41 on long streams at matched state
 - External review → open items: standalone gated DeltaNet · paired LLM controls (doc-free adapter + adapter-matched oracle) · colliding-key haystack · held-out generator + RULER/BABILong in two tiers · 1.5B only after these
+- E9 paired LLM controls (same val set): doc-free adapter 2.06 / 1.98 / 2.88, memory 1.10 / 1.72 / 2.41, adapter-matched oracle 0.06 / 0.86 / 1.46 (long_context / dialogue / agentic) → fair gap closed 48% / 23% / 33%; old '84%/53%/101%' superseded

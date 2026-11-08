@@ -17,8 +17,10 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
 - **Goal (decided):** a workshop-style *mechanism* paper (not a deployable context-extension method). External review (2 independent engineers) ranked the open risks — see "Open items".
 - **Interference (E8):** overwrite works but ~75-94% of its errors are STALE values, caused by lost write order inside a chunk (smaller chunks fix it). At matched state size the 2-layer
   MLP memory ties a linear memory on distinct-key overwrite but beats it on colliding keys (0.72 vs 0.49) and on long streams (0.69 vs 0.41).
-- **Next (agreed order):** (2) paired LLM controls: document-free adapter + adapter-matched oracle on the same val set; (3) haystack with COLLIDING keys (same entity, different value);
-  (4) held-out generator + public benchmark in two tiers (zero-shot and after adaptation, report both); (5) Qwen2-1.5B only if the matched-state margin holds; standalone gated DeltaNet before submission.
+- **Fair LLM numbers (E9, paired controls, same val set/budget):** long-context NLL — none 3.67 · document-free adapter 2.06 · **memory 1.10±0.03** · adapter-matched oracle 0.06. The memory beats the
+  document-free adapter by 0.96 / 0.26 / 0.48 NLL (long-context / dialogue / agentic) and closes **48% / 23% / 33% of the fair gap** (the earlier 84% / 53% / 101% used an unfair oracle and is superseded).
+- **Next (agreed order):** (3) haystack with COLLIDING keys (same question template, different value — pick distractor docs by question similarity); (4) held-out generator + public benchmark in two tiers
+  (zero-shot and after adaptation, report both); (5) Qwen2-1.5B only if the matched-state margin holds; standalone gated DeltaNet before submission. Also: the 50-77% remaining gap is probably state capacity — sweep memory width.
 
 ## Run things
 
@@ -70,6 +72,7 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E5 | Ablations (`abl_*`, 78 runs) | B needs 2nd-order grads (1st-order = chance) and TBPTT ≥4 chunks; momentum no help; A needs aux loss, rank/delayed-aux irrelevant; masking filler writes does *not* fix B (hypothesis refuted); ~1/15 B runs never take off (CE stuck at ln 32) | Keep B: 2nd-order, TBPTT 4, no-momentum slightly better |
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
 | E7a | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | **mid** insertion + window 8 best. But **swap control: 95–99% of the gain is a generic adapter** (no recall) | Gate 2b not passed; diagnose |
+| E9 | LLM paired controls: document-free adapter + adapter-matched oracle (`paired_ctl`) | Fair ceiling is far lower than the old oracle (long-context 0.06 vs 0.62). Memory beats the doc-free adapter by +0.96 / +0.26 / +0.48 NLL; closes 48% / 23% / 33% of the fair gap | Report ON vs doc-free adapter and the fair gap; drop the old "% of oracle gap" |
 | E8 | Overwrite / colliding keys (`upd_*`), linear-memory ablation (`lin_stream`), why errors are stale (`upd_diag`) | Memory survives interference; errors are stale values from lost within-chunk order (C 16→4: stale 0.24→0.05). MLP ≈ linear on distinct keys, MLP ≫ linear on colliding keys / long streams at matched state | Use small chunks for update-heavy data; DeltaNet baseline still owed |
 | E7c | Stage B: recipe at 6000 steps, full BPTT vs window 32, 3 seeds | **long-context NLL 1.10±0.03 / 1.15±0.01** (none 3.67, swap 3.82, oracle 0.62); agentic ON 2.41 ≈ oracle 2.42; pref-acc 0.91 vs swap 0.81 | **Gate 2b passed**; use full BPTT + crop + shift_v |
 | E7b | Fixes: crop curriculum, contrastive swap loss, next-token values (`shift_v`) | crop / contrast alone: no recall (contrast is gameable). **`shift_v` + crop + window ≥16: ON 1.79 vs generic 2.15, 3 seeds; full BPTT 1.42; control without `shift_v` 2.18** | Recipe found; Gate 2b passes |
@@ -159,8 +162,8 @@ agentic       full BPTT      4.40    3.23    2.41±0.01   2.42     −0.56      
 Long-context ON NLL by fact→question distance: <256 tokens 1.14 · 256–512 1.24 · 512–1024 1.14 · 1024+ 0.96 → no decay with distance. By fact position: early 1.02, middle 1.38, late 1.32
 (80% of training facts are early; middle/late are rarer — report, don't hide). Example generations (long_context): gold `October 14, 1939` → `October 14, 1939` (exact, no-memory base: `1809`);
 other samples still wrong (`titanium flow-valve assembly TX-7704` → `4,200 kilograms`).
-Caveats: (1) the "oracle" is the frozen base with full attention and **no** answer-style adaptation, so "% of oracle gap" over-credits the memory (agentic 101%: memory + style > oracle); a fair upper
-bound needs an adapter-matched oracle. (2) The generic-adapter reference (2.15/2.05/2.97) comes from Stage A's 150-sample val sets — indicative, not paired. (3) One model (0.5B), one data
+Caveats: (1) **superseded by E9**: the "oracle" here is the frozen base with full attention and **no** answer-style adaptation, so the "% of oracle gap" figures (84% / 53% / 101%) over-credit the memory;
+the fair numbers are in E9 (48% / 23% / 33%). (2) The generic-adapter reference (2.15/2.05/2.97) comes from Stage A's 150-sample val sets — indicative, not paired. (3) One model (0.5B), one data
 generator (3 facts / 1000-word docs), up to 8 segments. (4) Exact-match is still low; the memory returns the key details more often than whole phrases. (5) Generic style adaptation is still part of the
 none→ON gain (agentic swap 3.23 vs none 4.40); only the swap→ON / ON-vs-generic parts are document-specific.
 
@@ -188,10 +191,24 @@ linear d=64 (4,096, 4× less state)                       0.75     –        0.
 Caveats: GRU still not state-matched in the matrix sense; no gated DeltaNet / GLA / Mamba baseline yet; keys/values are still embedding-bound single tokens; LLM data has almost no overwrites, so (1)-(2) are a
 limitation to report, not a blocker for the document-recall claim.
 
+### E9 — paired LLM controls (done): the fair numbers
+`paired_ctl` (6000 steps, lr 3e-4, 300 val/type — the same validation set and budget as Stage B). `ctl_adapter_seg` = the SAME memory module with writes disabled on the segmented model (a document-free
+adapter, same capacity). `ctl_adapter_oracle` = the same module with writes disabled on the FULL-attention model (adapter-matched oracle = fair ceiling).
+```
+NLL                          none   doc-free adapter   MEMORY (3 seeds, full BPTT)   frozen oracle (old)   oracle + adapter (fair ceiling)   memory − adapter    fair gap closed
+long_context                 3.67   2.06               1.10 ± 0.03                   0.62                  0.06                              −0.96               48%   (gap 2.01)
+dialogue                     2.40   1.98               1.72 ± 0.01                   1.13                  0.86                              −0.26               23%   (gap 1.12)
+agentic                      4.40   2.88               2.41 ± 0.01                   2.42                  1.46                              −0.48               33%   (gap 1.43)
+agentic preference accuracy: doc-free adapter 0.86 · memory 0.91 · frozen oracle 0.80 · oracle+adapter 0.96   (the style artifact alone gives 0.86)
+long_context detail recall (key numbers/IDs of the gold answer): none 0.04 · memory 0.50 · frozen oracle 0.83
+```
+Reading. (1) The document-specific gain is real and large relative to seed noise (0.01-0.03). (2) The old oracle was unfair: with the same adaptation, full attention gets long-context NLL 0.06 (copying is
+near-deterministic), so the memory closes about half — not 84% — of the fair gap on long-context, and a quarter to a third on dialogue / agentic. (3) The earlier generic-adapter reference (2.15 / 2.05 / 2.97) was
+close to the paired one (2.06 / 1.98 / 2.88), so the E7 conclusions stand. (4) The remaining gap is the headline for improvement; capacity of the 459K-float state is the first suspect (E8: accuracy tracks state size).
+
 ## Open items (from two external reviews, ranked)
 1. Standalone gated DeltaNet (state-matched) on the synthetic tasks — required before submission; `lin_b_d128` is only a linear associative memory.
-2. LLM paired controls: document-free adapter (same module, writes disabled, segmented base) and adapter-matched oracle (same module, full attention) on the SAME val set; until then report ON vs generic and
-   detail recall only, never "% of oracle gap".
+2. ~~LLM paired controls~~ — DONE (E9). Report ON vs the document-free adapter and the fair gap closed (48% / 23% / 33%); never the old "% of oracle gap".
 3. Haystack with COLLIDING keys (same entity, different value), not just longer documents; then 16-64 segments, framed as "context storage stops growing" (do NOT quote a KV-cache break-even number).
 4. Held-out generator / topics, then a public benchmark (RULER / BABILong) in TWO tiers, both reported: zero-shot transfer and after a short adaptation with the same budget given to baselines.
 5. Code nits: with `shift_v` the last token of a segment pairs with the first of the next (mask the write at segment ends); retention is one scalar per chunk shared by all layers; generation re-runs the whole

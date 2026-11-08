@@ -27,6 +27,11 @@ from llm_model import SegmentedMemoryLM
 MODES = ("none", "off", "swap", "on", "oracle")
 
 
+def modes_for(cfg: LLMConfig):
+    """The adapter-oracle control run additionally reports the adapter-matched oracle NLL."""
+    return MODES + (("oracle_adapter",) if cfg.train_mode == "adapter_oracle" else ())
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def to_dev(b, device):
@@ -77,11 +82,11 @@ def eval_nll(model, items: List[dict], cfg: LLMConfig, pad_id: int, device, mode
     out = {m: [] for m in modes}
     for i in range(0, len(items), bs):
         chunk = items[i:i + bs]
-        seg = to_dev(collate(chunk, cfg, pad_id), device) if any(m != "oracle" for m in modes) else None
+        seg = to_dev(collate(chunk, cfg, pad_id), device) if any(not m.startswith("oracle") for m in modes) else None
         for m in modes:
-            if m == "oracle":
+            if m.startswith("oracle"):
                 ob = to_dev(collate_oracle(chunk, cfg, pad_id), device)
-                lp, valid = model.oracle_logp(ob), ob["ans_valid"]
+                lp, valid = model.oracle_logp(ob, adapter=(m == "oracle_adapter")), ob["ans_valid"]
             else:
                 lp, valid = model.answer_logp(seg, m), seg["ans_valid"]
             out[m] += sample_nll(lp, valid).tolist()
@@ -96,11 +101,12 @@ def eval_pref(model, items: List[dict], cfg: LLMConfig, pad_id: int, device, mod
     for i in range(0, len(items), bs):
         chunk = items[i:i + bs]
         for m in modes:
-            if m == "oracle":
+            if m.startswith("oracle"):
                 c, w = collate_oracle(chunk, cfg, pad_id), collate_oracle(chunk, cfg, pad_id, use_wrong=True)
                 c, w = to_dev(c, device), to_dev(w, device)
-                sc = -sample_nll(model.oracle_logp(c), c["ans_valid"])
-                sw = -sample_nll(model.oracle_logp(w), w["ans_valid"])
+                ad = (m == "oracle_adapter")
+                sc = -sample_nll(model.oracle_logp(c, adapter=ad), c["ans_valid"])
+                sw = -sample_nll(model.oracle_logp(w, adapter=ad), w["ans_valid"])
             else:
                 c, w = to_dev(collate(chunk, cfg, pad_id), device), to_dev(collate(chunk, cfg, pad_id, use_wrong=True), device)
                 sc = -sample_nll(model.answer_logp(c, m), c["ans_valid"])
@@ -144,7 +150,8 @@ def full_eval(model, tok, splits, cfg: LLMConfig, pad_id: int, device) -> dict:
     for t, d in splits.items():
         val = [tokenize_example(tok, ex, cfg) for ex in d["val"]]
         gen = [tokenize_example(tok, ex, cfg) for ex in d["gen"]]
-        nll = eval_nll(model, val, cfg, pad_id, device, MODES)
+        MODES_ = modes_for(cfg)
+        nll = eval_nll(model, val, cfg, pad_id, device, MODES_)
         r = {"n_val": len(val), "nll": {m: sum(v) / len(v) for m, v in nll.items()},
              "ppl": {m: math.exp(sum(v) / len(v)) for m, v in nll.items()}}
         r["nll_gain_on_vs_none"] = r["nll"]["none"] - r["nll"]["on"]       # >0 ⇒ memory helps
@@ -156,7 +163,7 @@ def full_eval(model, tok, splits, cfg: LLMConfig, pad_id: int, device) -> dict:
         nseg = [max(1, math.ceil(len(it["ctx"]) / cfg.seg_len)) for it in val]
         by_seg = defaultdict(lambda: defaultdict(list))
         for i, n in enumerate(nseg):
-            for m in MODES:
+            for m in MODES_:
                 by_seg[n][m].append(nll[m][i])
         r["nll_by_n_segments"] = {str(n): {m: sum(v) / len(v) for m, v in ms.items()} | {"count": len(ms["on"])}
                                   for n, ms in sorted(by_seg.items())}
@@ -166,19 +173,19 @@ def full_eval(model, tok, splits, cfg: LLMConfig, pad_id: int, device) -> dict:
             if dd is None:
                 continue
             lab = "<256" if dd < 256 else "256-512" if dd < 512 else "512-1024" if dd < 1024 else "1024+"
-            for m in MODES:
+            for m in MODES_:
                 by_dist[lab][m].append(nll[m][i])
         r["nll_by_fact_distance"] = {lab: {m: sum(v) / len(v) for m, v in ms.items()} | {"count": len(ms["on"])}
                                      for lab, ms in by_dist.items()}
         if t == "long_context":
             by_pos = defaultdict(lambda: defaultdict(list))
             for i, it in enumerate(val):
-                for m in MODES:
+                for m in MODES_:
                     by_pos[it["meta"].get("fact_position")][m].append(nll[m][i])
             r["nll_by_fact_position"] = {str(p): {m: sum(v) / len(v) for m, v in ms.items()} | {"count": len(ms["on"])}
                                          for p, ms in by_pos.items()}
         if t == "agentic":
-            r["pref_acc"] = eval_pref(model, val, cfg, pad_id, device, MODES)
+            r["pref_acc"] = eval_pref(model, val, cfg, pad_id, device, MODES_)
         g, ex = eval_generation(model, tok, gen, cfg, pad_id, device, ("none", "on", "oracle"))
         r["generation"], r["generation_examples"] = g, ex
         res[t] = r
@@ -215,8 +222,10 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
     progress = mp.Value("d", 0.0)
     ds = QADataset(train_ex, tok, cfg, progress=progress)
     g = torch.Generator().manual_seed(cfg.seed)
+    train_collate = (lambda items: collate_oracle(items, cfg, pad_id)) if cfg.train_mode == "adapter_oracle" \
+        else (lambda items: collate(items, cfg, pad_id))
     loader = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True, num_workers=2,
-                        collate_fn=lambda items: collate(items, cfg, pad_id), generator=g)
+                        collate_fn=train_collate, generator=g)
     if verbose:
         print(f"[llm] memory params {n_params/1e6:.2f}M  insert={cfg.insert}  mode={cfg.mem_mode}  "
               f"seg={cfg.seg_len} chunk={cfg.chunk_size} tbptt={cfg.tbptt_chunks}")
@@ -232,11 +241,16 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
             batch = next(it)
         batch = to_dev(batch, device)
         progress.value = step / max(cfg.steps, 1)
-        lp = model.answer_logp(batch, "on")
+        if cfg.train_mode == "adapter_oracle":
+            lp = model.oracle_logp(batch, adapter=True)
+        elif cfg.train_mode == "adapter_seg":
+            lp = model.answer_logp(batch, "off")
+        else:
+            lp = model.answer_logp(batch, "on")
         nll_on = sample_nll(lp, batch["ans_valid"])
         loss = nll_on.mean()
         contrast_gap = None
-        if cfg.contrast_weight > 0 and batch["ids"].shape[0] > 1:
+        if cfg.contrast_weight > 0 and cfg.train_mode == "memory" and batch["ids"].shape[0] > 1:
             nll_sw = sample_nll(model.answer_logp(batch, "swap"), batch["ans_valid"])
             gap = nll_sw - nll_on
             loss = loss + cfg.contrast_weight * torch.relu(cfg.contrast_margin - gap).mean()

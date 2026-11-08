@@ -40,6 +40,11 @@ class LLMConfig:
     retention_learned: bool = True
     aux_weight: float = 0.1          # Mode A only
 
+    # paired controls (the fair reference for the headline numbers)
+    train_mode: str = "memory"       # memory: the real model
+                                     # adapter_seg: SAME module with writes disabled on the segmented model = document-free adapter
+                                     # adapter_oracle: SAME module with writes disabled on the FULL-attention model = adapter-matched oracle
+
     # anti-shortcut training (E7: 95-99% of the Stage A gain was document-independent)
     contrast_weight: float = 0.0     # >0: also run the question with ANOTHER document and add
                                      #   w · relu(margin − (nll_swap − nll_on))  → only document-specific info lowers the loss

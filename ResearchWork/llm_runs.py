@@ -73,6 +73,15 @@ def final_b() -> List[LLMConfig]:
     return out
 
 
+def paired_ctl() -> List[LLMConfig]:
+    """Paired controls on the SAME val set and training budget as Stage B (6000 steps, lr 3e-4, 300 val/type):
+    ctl_adapter_seg    = same module, writes disabled, segmented base  → document-free adapter (fair 'generic' reference)
+    ctl_adapter_oracle = same module, writes disabled, full attention  → adapter-matched oracle (fair ceiling)"""
+    base = LLMConfig(**{**FIX_BASE, "steps": 6000, "eval_every": 2000}, val_per_type=300, gen_eval_per_type=100)
+    return [replace(base, run_name="ctl_adapter_seg", train_mode="adapter_seg"),
+            replace(base, run_name="ctl_adapter_oracle", train_mode="adapter_oracle")]
+
+
 def fix_b() -> List[LLMConfig]:
     """Root-cause test: same-position (k_t, v_t) cannot store a multi-token string → next-token values (shift_v).
     Success = `on` NLL clearly BELOW the generic adapter (long_context 2.15) and exact-match recall > 0, not just swap→on."""
@@ -85,7 +94,7 @@ def fix_b() -> List[LLMConfig]:
 
 
 RUNS = {"smoke": smoke, "gate2a": gate2a, "full_a": full_a, "fix_smoke": fix_smoke, "fix_a": fix_a, "fix_b": fix_b,
-        "fix_c": fix_c, "final_b": final_b}
+        "fix_c": fix_c, "final_b": final_b, "paired_ctl": paired_ctl}
 
 
 def build_runs(name: str) -> List[LLMConfig]:
@@ -101,6 +110,8 @@ def summarize(res: dict) -> str:
     for t, r in f.items():
         n = r["nll"]
         sw = f" | swap {n['swap']:.3f}" if "swap" in n else ""
+        if "oracle_adapter" in n:
+            sw += f" | ORACLE+ADAPTER {n['oracle_adapter']:.3f}"
         rec = f"  recovered {r['frac_gain_recovered']*100:.0f}% of oracle gap" if "frac_gain_recovered" in r else ""
         gen_on = {"long_context": 2.15, "dialogue": 2.05, "agentic": 2.97}.get(t)          # Stage A best (generic adapter)
         vg = f" vs-generic {n['on'] - gen_on:+.2f}" if gen_on else ""
