@@ -10,11 +10,11 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
   - **Mode B (gradient update, momentum optional) is the chosen branch.** Mode A (learned update rule) is parked.
 - **Synthetic evidence (3 seeds):** Mode B ≫ matched GRU ≫ no memory on the hard `stream` task. The "retention problem" was really a
   *training-horizon* problem: long BPTT + a distance **curriculum** + small step clip lifts acc@512 facts 0.43 → 0.69 (E6).
-- **LLM evidence (Qwen2-0.5B, 8 variants, 1 seed): memory does NOT yet recall documents.** Mid-layer injection cuts answer NLL 3.70 → ~2.3, but a
-  *different* document gives the same result (swap ≈ on): **95–99% of the gain is generic answer-style adaptation, 2–5% is document-specific** (E7).
-  Gate 2b (memory beats frozen base *because of the document*) is **not passed**.
+- **LLM evidence (frozen Qwen2-0.5B): the memory now recalls documents, after a root-cause fix.** First attempt learned only a generic answer-style adapter
+  (swap ≈ on, E7a). The fix: **next-token values (`shift_v`) + crop-around-the-fact curriculum + a long gradient window** (E7b). Replicated over 3 seeds,
+  long-context answer NLL 3.70 (none) → 1.8–1.9 (generic adapter alone: 2.15), full BPTT 1.42; with the wrong document it falls back to none (3.6). Oracle 0.63.
 - **Where things run:** everything on **Modal** (`launch.py`). Do not run models locally.
-- **Next (proposed, not started):** make the shortcut unprofitable — contrastive swap loss, document-length curriculum, crop-around-fact (see E7 "Next").
+- **Next:** Stage B (`final_b`: full BPTT / window 32, 6000 steps, 3 seeds, 300 val/type) confirms the recipe; then scale (Qwen2-1.5B, more segments) and write-up.
 
 ## Run things
 
@@ -65,7 +65,8 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E4 | Phase 1: A vs B vs matched GRU (`p1_typed`, `p1_stream`) | typed: A 1.00 > B 0.63–0.85 @512 filler. **stream: B 0.99/0.70/0.43 @64/256/512 facts; A 0.70/0.07/0.04; GRU ≤0.13** | **Gate 1: Mode B.** Ranking flips ⇒ typed task rewarded token-type gating |
 | E5 | Ablations (`abl_*`, 78 runs) | B needs 2nd-order grads (1st-order = chance) and TBPTT ≥4 chunks; momentum no help; A needs aux loss, rank/delayed-aux irrelevant; masking filler writes does *not* fix B (hypothesis refuted); ~1/15 B runs never take off (CE stuck at ln 32) | Keep B: 2nd-order, TBPTT 4, no-momentum slightly better |
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
-| E7 | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | Gate 2a: **mid** insertion + window 8 beats last / full-BPTT on NLL. Stage A (4000 steps ×8): all variants ≈ same; **swap control: gain is generic, not recall** | Gate 2b NOT passed; fix the training signal |
+| E7a | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | **mid** insertion + window 8 best. But **swap control: 95–99% of the gain is a generic adapter** (no recall) | Gate 2b not passed; diagnose |
+| E7b | Fixes: crop curriculum, contrastive swap loss, next-token values (`shift_v`) | crop / contrast alone: no recall (contrast is gameable). **`shift_v` + crop + window ≥16: ON 1.79 vs generic 2.15, 3 seeds; full BPTT 1.42; control without `shift_v` 2.18** | Recipe found; Gate 2b passes |
 
 ### E6 — retention round (done)
 Baseline = `p1_stream/titan_b`: acc 0.99 / 0.70 / 0.43 at 64 / 256 / 512 facts. Per-seed view matters: many variants have seeds that *never take off*.
@@ -113,14 +114,38 @@ Why retrieval is hard here (hypotheses, untested): (1) shortcut learning — the
 (serial numbers, PO codes) that need token-level binding from mid-layer states, unlike the synthetic tasks whose embeddings did the binding; (3) keys written at fact tokens and
 queries read from the question segment are semantically related but lexically different, and a 3.9M-param module trained 4000 steps may not learn that match.
 
-**Next (proposed):**
-1. *Remove the shortcut from the loss:* contrastive swap term — also run (question, wrong document) and penalise the answer likelihood there
-   (e.g. `nll_on + λ·relu(m − (nll_swap − nll_on))`), so only document-specific information reduces the loss.
-2. *Document-length curriculum* (E6 cured take-off on synthetic; LLM contexts are far longer): ramp the number of context segments 1 → 8.
-3. *Make the fact reachable:* crop training documents around the answer fact so write → read stays inside the gradient window, then lengthen.
-4. Track `swap→on` as THE headline metric; never quote `on` vs `none` alone.
+### E7b — why recall was missing, and the fix (done; Stage B confirming)
+Diagnosis. The memory wrote pairs `(k_t, v_t)` from the **same position**. At layer 12 `h_t` mostly encodes the *current* token, so a same-position value cannot store a multi-token
+string (`NX-774-B9`): there is no next-token association (induction). Fix: `shift_v` — pair `(k_t → v_{t+1})`; sanity check 6c proves the output at position p never depends on tokens > p.
+Second ingredient: the fact sits far before the question, so training needs a gradient window long enough to connect write and read, and an easy start: the **crop curriculum**
+(context = 48 tokens before the fact + D tokens after it, D ramping 32 → full document over the first 50% of training; eval always uses full documents).
+```
+1 seed unless noted, 3000 steps, lr 3e-4. Reference "generic adapter" (no document info at all) = long_context ON 2.15 | dialogue 2.05 | agentic 2.97
+variant                                       long_ctx ON   vs generic   swap    note
+crop only                                        2.23        +0.08       2.28    no
+contrastive swap loss (full docs)                2.29        +0.14       2.31    no
+crop + contrastive, w8 / margin 2                2.36        +0.21       2.39    no
+crop + contrastive, window 16                    2.23        +0.08       3.43    GAMED: swap→on = +1.20 but ON no better; module learned "doc mismatches question → switch off"
+shift_v, window 8 (± crop)                    2.16 / 2.20    ~0          2.3     no — window too short for the distance
+shift_v + crop + window 16                       1.79        −0.36       3.20    YES   (seeds 1, 2: 1.88, 1.87)
+  + contrastive on top                           2.05        −0.10       4.28    worse (swap pushed above "none")
+control: crop + window 16, NO shift_v            2.18        +0.03       2.30    shift_v is necessary
+shift_v + crop + window 32                       1.46        −0.69       3.54
+shift_v + crop + full BPTT                       1.42        −0.73       3.57    best; detail recall 0.40 (oracle 0.74, none 0.04)
+shift_v + crop + window 16, 6000 steps           1.53        −0.62       3.68
+none 3.70 · oracle 0.63.  Agentic: best 2.69 vs generic 2.97, oracle 2.43 (≈87% of the none→oracle gap).  Dialogue: 1.93 vs 2.05, oracle 1.14.
+```
+Reading. (1) With `shift_v` the wrong document gives back ≈ the no-memory NLL (swap ≈ 3.6 ≈ none): the dependence on the document is now total. (2) The NLL stays flat with
+fact→question distance (<256 tokens: 1.74, >1024 tokens: 1.72). (3) Generated answers carry the key details: gold `October 14, 1939` → `October 14th` (no memory: `1809`),
+gold `…concentration of 4.2 ppm` → `4.2 ppm`. Exact-match is still ~0 because gold answers are long phrases and the memory returns the key span — judge by NLL and **detail recall**
+(fraction of the gold's numbers/IDs present in the answer). (4) Wider windows / full BPTT help and no longer explode with the curriculum (earlier full-BPTT runs without crop did).
+Lessons: judge recall by `ON` vs the generic reference, never by swap→on alone (contrastive swap is gameable); a structural cause (what the value *is*) beat all loss-engineering.
 
 ## Gotchas (cost us time)
+
+- `swap→on` can be inflated by a *mismatch detector* (module switches off for the wrong document without recalling anything). Always also compare `ON` to the generic-adapter reference and check detail recall.
+- Same-position `(k_t, v_t)` memory cannot recall multi-token strings from a frozen LM: use `shift_v` (next-token values).
+- LLM seeds share one validation split (`split_seed`); `seed` only changes init/batch order.
 
 - `modal volume put/ls/rm` from Git Bash rewrites `/path` into `C:/Program Files/Git/path` → prefix with `MSYS_NO_PATHCONV=1`.
 - Data: ~47 of 30K jsonl records are malformed (missing fields) — the loader skips and reports them.

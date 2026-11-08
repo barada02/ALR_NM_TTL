@@ -31,6 +31,7 @@ class LLMConfig:
     rank: int = 8
     chunk_size: int = 32             # must divide seg_len
     tbptt_chunks: int = 0            # 0 = full BPTT; long-context facts sit 10-60 chunks before the question
+    shift_v: bool = False            # next-token values (induction-style) — see MemoryConfig.shift_v
     inner_lr: float = 0.2
     inner_clip: float = 0.1
     use_momentum: bool = False
@@ -39,12 +40,22 @@ class LLMConfig:
     retention_learned: bool = True
     aux_weight: float = 0.1          # Mode A only
 
+    # anti-shortcut training (E7: 95-99% of the Stage A gain was document-independent)
+    contrast_weight: float = 0.0     # >0: also run the question with ANOTHER document and add
+                                     #   w · relu(margin − (nll_swap − nll_on))  → only document-specific info lowers the loss
+    contrast_margin: float = 1.0
+    crop: bool = False               # crop-around-the-fact distance curriculum (early: short context right after the fact)
+    crop_curriculum: float = 0.5     # fraction of training over which the max fact→question distance ramps up
+    crop_pre_tokens: int = 48        # context kept before the fact
+    crop_d_min: int = 32             # shortest distance (tokens after the fact starts)
+
     # data
     data_dir: str = "/data/miniTitan_data"
     types: str = "long_context,dialogue,agentic"
     val_per_type: int = 150
     gen_eval_per_type: int = 48
-    seed: int = 0
+    seed: int = 0                    # training randomness (init, batch order)
+    split_seed: int = 0              # train/val split — fixed so every seed is evaluated on the same validation set
 
     # optimisation
     batch_size: int = 4

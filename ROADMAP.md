@@ -72,10 +72,12 @@ markmap:
 - Trainer rewrite (llm_train.py)
   - ✅ v4 module, optimizer steps, shuffled seeded split, exact answer boundary, autoregressive generation eval, honest baselines
   - ✅ eval modes none / off / swap / on / oracle; agentic preference scoring; breakdown by fact position and #segments
-- ❌ 🚪 GATE 2b NOT PASSED: memory beats the frozen base, but a *different* document gives the same gain (swap ≈ on): 95–99% of the gain is
-  generic adaptation; document-specific gain 0.01–0.08 nats; exact-match recall 0.02 (oracle 0.69)
-- ⬜ Fix the training signal: contrastive swap loss · document-length curriculum · crop-around-fact curriculum · judge by swap→on
-- ⬜ Then re-run Stage A/B (3 seeds) and re-test Gate 2b
+- ✅ 🚪 GATE 2b PASSED (provisional until Stage B): first attempt = generic adapter only (swap ≈ on). Root cause: same-position (k_t, v_t) cannot store strings →
+  `shift_v` (next-token values) + crop-around-fact curriculum + window ≥16: long-context NLL 3.70 → 1.8–1.9 (3 seeds; generic adapter 2.15; oracle 0.63), full BPTT 1.42;
+  wrong document → 3.6 (none); control without `shift_v` 2.18; detail recall 0.40 vs oracle 0.74
+- ❌ contrastive swap loss: gameable (module learns mismatch detection), dropped
+- 🔄 Stage B (`final_b`): full BPTT / window 32, 6000 steps, 3 seeds, 300 val per type
+- ⬜ Next: Qwen2-1.5B, more segments (8 → 16), error bars, then Phase 3 write-up
 
 ## Phase 3 — Scale & characterize ☁️ multi-session
 - ⬜ Qwen2-1.5B + full 30K dataset (data_generation/ output)
@@ -115,3 +117,5 @@ markmap:
 - bug found on Modal: first-order Mode B crashed (autograd.grad without retain_graph) — sanity suite missed it; now covered (check 4b)
 - LLM (Qwen2-0.5B, mid-layer memory, 8 variants): NLL 3.70→2.3 but swap≈on → generic adaptation, not recall; lr 3e-3 never takes off; layer/width/clip/window don't matter
 - LLM eval lesson: `off` (starved memory) is worse than none; `swap` (wrong document) is the control that separates recall from adaptation; agentic preference accuracy is a style artifact
+- LLM: same-position (k_t,v_t) memory cannot recall strings; next-token values (`shift_v`) + crop curriculum + long window: long-context NLL 1.42-1.9 vs generic 2.15 (3 seeds), swap ≈ none
+- LLM: contrastive swap loss is gameable (swap→on +1.2 with no ON gain); judge by ON vs generic reference + detail recall

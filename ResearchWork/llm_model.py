@@ -47,7 +47,8 @@ class SegmentedMemoryLM(nn.Module):
             dim=d, mem_hidden=cfg.mem_hidden, mem_layers=cfg.mem_layers, rank=cfg.rank, chunk_size=cfg.chunk_size,
             mode=cfg.mem_mode, tbptt_chunks=cfg.tbptt_chunks or None, inner_lr=cfg.inner_lr,
             inner_clip=cfg.inner_clip, use_momentum=cfg.use_momentum, second_order=cfg.second_order,
-            retention_bias=cfg.retention_bias, retention_learned=cfg.retention_learned, input_norm=True)).float()
+            retention_bias=cfg.retention_bias, retention_learned=cfg.retention_learned, input_norm=True,
+            shift_v=cfg.shift_v)).float()
 
         if cfg.insert == "last":
             target = lm.model.norm

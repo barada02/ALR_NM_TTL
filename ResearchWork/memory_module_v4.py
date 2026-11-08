@@ -52,6 +52,9 @@ class MemoryConfig:
     tbptt_chunks: Optional[int] = 4  # detach state every N chunks; None = full BPTT
     retention_bias: float = 4.0      # σ(4)=0.982 per chunk at init (remember-by-default)
     retention_learned: bool = True   # False → ρ = σ(retention_bias) constant, gate frozen (ablation)
+    shift_v: bool = False            # value comes from the NEXT token: pair (k_t → v_{t+1}) = induction-style next-token
+                                     # memory. Same-position (k_t, v_t) cannot store a multi-token string. Causal: the
+                                     # state a read sees only ever contains tokens at or before the reading position.
     input_norm: bool = False         # RMS-normalise the hidden state the memory *sees* (k/v/gates); the residual
                                      # stream it adds into is untouched. Needed for LLM hidden states (huge outlier dims).
     # Mode B
@@ -115,8 +118,8 @@ class KeyValueProjection(nn.Module):
         self.W_k = nn.Linear(dim, dim, bias=False)
         self.W_v = nn.Linear(dim, dim, bias=False)
 
-    def forward(self, h: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        return rms_norm(self.W_k(h)), rms_norm(self.W_v(h))
+    def forward(self, h: torch.Tensor, h_v: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+        return rms_norm(self.W_k(h)), rms_norm(self.W_v(h if h_v is None else h_v))
 
 
 class SurpriseGate(nn.Module):
@@ -324,6 +327,7 @@ class MiniTitanMemoryModule(nn.Module):
         self._ensure_state(B, hidden)
         self.detach_state()
 
+        hn_all = rms_norm(hidden) if cfg.input_norm else hidden             # only used by shift_v
         outs, aux_terms = [], []
         stats = {"surprise": [], "write_gate": [], "retention": [], "blend": []}
         hist: deque = deque(maxlen=max(cfg.aux_lag_chunks, 1))
@@ -334,7 +338,13 @@ class MiniTitanMemoryModule(nn.Module):
             h = rms_norm(h_raw) if cfg.input_norm else h_raw                 # what the memory sees
             m = None if write_mask is None else \
                 write_mask[:, s:s + cfg.chunk_size].to(h.dtype).unsqueeze(-1)  # (B,c,1)
-            k, v = self.kv(h)
+            if cfg.shift_v:
+                idx = torch.arange(s + 1, s + 1 + h_raw.shape[1], device=hidden.device)
+                k, v = self.kv(h, hn_all[:, idx.clamp(max=T - 1)])
+                vm = (idx < T).to(h.dtype).view(1, -1, 1)                    # the very last token has no next token
+                m = vm if m is None else m * vm
+            else:
+                k, v = self.kv(h)
             h_mean = h.mean(dim=1)
             rho = self.retention_gate(h_mean)                                # (B,1)
 
@@ -518,6 +528,24 @@ def _run_checks():
     assert all(abs(r - torch.sigmoid(torch.tensor(8.0)).item()) < 1e-5 for r in met["per_chunk"]["retention"])
     assert not any(p.requires_grad for p in mod.retention_gate.parameters())
     print("6b. fixed retention ρ = σ(bias), gate frozen             OK")
+
+    # 6c. causality (incl. shift_v): the output at position p must not depend on hidden states at positions > p
+    for mode in "AB":
+        for shift in (False, True):
+            mod = mk(mode, shift_v=shift, input_norm=True)
+            nn.init.normal_(mod.W_o.weight, std=0.1)
+            mod.eval()
+            h0 = torch.randn(B, T, d)
+            q = 3 * C + 2
+            h1 = h0.clone()
+            h1[:, q] += 5.0 * torch.randn(B, d)
+            mod.reset_memory()
+            o0, _, _ = mod(h0)
+            mod.reset_memory()
+            o1, _, _ = mod(h1)
+            assert torch.allclose(o0[:, :q], o1[:, :q], atol=1e-5), f"mode {mode} shift={shift}: output leaks future tokens"
+            assert not torch.allclose(o0[:, q:], o1[:, q:], atol=1e-5), "perturbation had no effect downstream"
+    print("6c. causal: outputs at p independent of tokens > p        OK  (Mode A/B, shift_v off/on)")
 
     # 7. Mode B one-shot write: re-reading identical keys after a write lowers surprise
     mod = mk("B")

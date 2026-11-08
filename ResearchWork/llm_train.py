@@ -112,7 +112,7 @@ def eval_pref(model, items: List[dict], cfg: LLMConfig, pad_id: int, device, mod
 @torch.no_grad()
 def eval_generation(model, tok, items: List[dict], cfg: LLMConfig, pad_id: int, device, modes, bs: int = 8):
     """Greedy autoregressive answers. Reports exact match / contains (normalised, first line) and token F1."""
-    stats = {m: {"em": [], "contains": [], "f1": []} for m in modes}
+    stats = {m: {"em": [], "contains": [], "f1": [], "digit_recall": []} for m in modes}
     examples = {m: [] for m in modes}
     for i in range(0, len(items), bs):
         chunk = items[i:i + bs]
@@ -130,9 +130,12 @@ def eval_generation(model, tok, items: List[dict], cfg: LLMConfig, pad_id: int, 
                 stats[m]["em"].append(float(norm_text(first) == norm_text(gold)))
                 stats[m]["contains"].append(float(norm_text(gold) in norm_text(text)))
                 stats[m]["f1"].append(token_f1(first, gold))
+                gd = set(re.findall(r"\d+", gold))                    # key details: numbers / IDs in the gold answer
+                if gd:
+                    stats[m]["digit_recall"].append(len(gd & set(re.findall(r"\d+", first))) / len(gd))
                 if len(examples[m]) < 3:
                     examples[m].append({"gold": gold[:80], "pred": first[:80]})
-    mean = lambda v: sum(v) / max(len(v), 1)
+    mean = lambda v: (sum(v) / len(v)) if v else float("nan")
     return {m: {k: mean(v) for k, v in s.items()} for m, s in stats.items()}, examples
 
 
@@ -148,6 +151,8 @@ def full_eval(model, tok, splits, cfg: LLMConfig, pad_id: int, device) -> dict:
         r["nll_gain_on_vs_off"] = r["nll"]["off"] - r["nll"]["on"]         # inflated: a starved memory injects junk
         r["nll_gain_on_vs_swap"] = r["nll"]["swap"] - r["nll"]["on"]       # >0 ⇒ document-SPECIFIC recall (the honest control)
         r["frac_gain_recovered"] = (r["nll"]["none"] - r["nll"]["on"]) / max(r["nll"]["none"] - r["nll"]["oracle"], 1e-6)
+        tot = r["nll"]["none"] - r["nll"]["on"]
+        r["doc_specific_share"] = (r["nll"]["swap"] - r["nll"]["on"]) / tot if tot > 1e-6 else float("nan")
         nseg = [max(1, math.ceil(len(it["ctx"]) / cfg.seg_len)) for it in val]
         by_seg = defaultdict(lambda: defaultdict(list))
         for i, n in enumerate(nseg):
@@ -155,6 +160,16 @@ def full_eval(model, tok, splits, cfg: LLMConfig, pad_id: int, device) -> dict:
                 by_seg[n][m].append(nll[m][i])
         r["nll_by_n_segments"] = {str(n): {m: sum(v) / len(v) for m, v in ms.items()} | {"count": len(ms["on"])}
                                   for n, ms in sorted(by_seg.items())}
+        by_dist = defaultdict(lambda: defaultdict(list))                   # fact→question distance in tokens
+        for i, it in enumerate(val):
+            dd = it.get("dist_tokens")
+            if dd is None:
+                continue
+            lab = "<256" if dd < 256 else "256-512" if dd < 512 else "512-1024" if dd < 1024 else "1024+"
+            for m in MODES:
+                by_dist[lab][m].append(nll[m][i])
+        r["nll_by_fact_distance"] = {lab: {m: sum(v) / len(v) for m, v in ms.items()} | {"count": len(ms["on"])}
+                                     for lab, ms in by_dist.items()}
         if t == "long_context":
             by_pos = defaultdict(lambda: defaultdict(list))
             for i, it in enumerate(val):
@@ -196,7 +211,9 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min(1.0, (s + 1) / max(cfg.warmup, 1)) *
         (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * min(s, cfg.steps) / max(cfg.steps, 1)))))
-    ds = QADataset(train_ex, tok, cfg)
+    import torch.multiprocessing as mp
+    progress = mp.Value("d", 0.0)
+    ds = QADataset(train_ex, tok, cfg, progress=progress)
     g = torch.Generator().manual_seed(cfg.seed)
     loader = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True, num_workers=2,
                         collate_fn=lambda items: collate(items, cfg, pad_id), generator=g)
@@ -214,8 +231,16 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
             it = iter(loader)
             batch = next(it)
         batch = to_dev(batch, device)
+        progress.value = step / max(cfg.steps, 1)
         lp = model.answer_logp(batch, "on")
-        loss = sample_nll(lp, batch["ans_valid"]).mean()
+        nll_on = sample_nll(lp, batch["ans_valid"])
+        loss = nll_on.mean()
+        contrast_gap = None
+        if cfg.contrast_weight > 0 and batch["ids"].shape[0] > 1:
+            nll_sw = sample_nll(model.answer_logp(batch, "swap"), batch["ans_valid"])
+            gap = nll_sw - nll_on
+            loss = loss + cfg.contrast_weight * torch.relu(cfg.contrast_margin - gap).mean()
+            contrast_gap = float(gap.detach().mean())
         if cfg.mem_mode == "A" and model.last_aux is not None:
             loss = loss + cfg.aux_weight * model.last_aux
         opt.zero_grad(set_to_none=True)
@@ -233,6 +258,7 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
                                                   "mean_blend", "mean_surprise") if k in model.last_met}
         if step % cfg.log_every == 0:
             row = {"step": step, "nll": sum(run_loss) / len(run_loss), "grad_norm": float(gn),
+                   "nll_on_batch": float(nll_on.mean()), "swap_gap_batch": contrast_gap,
                    "time_s": time.time() - t0, "mem_gb": torch.cuda.max_memory_allocated() / 1e9, **run_met}
             curve.append(row)
             run_loss = []

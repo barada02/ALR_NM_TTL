@@ -29,7 +29,63 @@ def full_a() -> List[LLMConfig]:
     return [replace(base, run_name=k, **kw) for k, kw in v.items()]
 
 
-RUNS = {"smoke": smoke, "gate2a": gate2a, "full_a": full_a}
+# Stage-A best config (lr 3e-4) is the reference: long_context NLL none 3.70 | swap 2.23 | on 2.15 (generic adapter only).
+FIX_BASE = dict(steps=3000, eval_every=1000, warmup=100, insert="mid", tbptt_chunks=8, lr=3e-4)
+
+
+def fix_smoke() -> List[LLMConfig]:
+    """12 steps of crop + contrastive loss: checks the new code paths and the memory cost of the extra swap pass."""
+    base = LLMConfig(steps=12, log_every=2, eval_every=10 ** 9, val_per_type=6, gen_eval_per_type=3, batch_size=4,
+                     gen_max_new=8, save_ckpt=False, insert="mid", tbptt_chunks=8, crop=True, contrast_weight=1.0)
+    return [replace(base, run_name="fixsmoke_both")]
+
+
+def fix_a() -> List[LLMConfig]:
+    """E7 fixes: make the document-independent shortcut unprofitable. Judge by swap→on and by `on` NLL vs the generic baseline."""
+    base = LLMConfig(**FIX_BASE)
+    v = {"f1_contrast": dict(contrast_weight=1.0),
+         "f2_crop": dict(crop=True),
+         "f3_both": dict(crop=True, contrast_weight=1.0),
+         "f4_both_w16": dict(crop=True, contrast_weight=1.0, tbptt_chunks=16),
+         "f5_both_m2": dict(crop=True, contrast_weight=1.0, contrast_margin=2.0)}
+    return [replace(base, run_name=k, **kw) for k, kw in v.items()]
+
+
+def fix_c() -> List[LLMConfig]:
+    """Replicate and stress the one positive signal (shift_v + crop + window 16): control without shift_v, 2 more seeds,
+    wider window, full BPTT, longer training."""
+    base = LLMConfig(**{**FIX_BASE, "tbptt_chunks": 16}, shift_v=True, crop=True)
+    v = {"c_ctl_noshift": dict(shift_v=False),
+         "c_s3_seed1": dict(seed=1), "c_s3_seed2": dict(seed=2),
+         "c_w32": dict(tbptt_chunks=32), "c_full": dict(tbptt_chunks=0), "c_long6k": dict(steps=6000, eval_every=2000)}
+    return [replace(base, run_name=k, **kw) for k, kw in v.items()]
+
+
+def final_b() -> List[LLMConfig]:
+    """Stage B: the recipe that passed the controls (next-token values + crop curriculum), long BPTT, 6000 steps,
+    3 seeds each, larger validation set. Seeds share one validation split (split_seed)."""
+    base = LLMConfig(**{**FIX_BASE, "steps": 6000, "eval_every": 2000}, shift_v=True, crop=True,
+                     val_per_type=300, gen_eval_per_type=100)
+    out = []
+    for tag, w in (("full", 0), ("w32", 32)):
+        for s in (0, 1, 2):
+            out.append(replace(base, run_name=f"b_{tag}_s{s}", tbptt_chunks=w, seed=s))
+    return out
+
+
+def fix_b() -> List[LLMConfig]:
+    """Root-cause test: same-position (k_t, v_t) cannot store a multi-token string → next-token values (shift_v).
+    Success = `on` NLL clearly BELOW the generic adapter (long_context 2.15) and exact-match recall > 0, not just swap→on."""
+    base = LLMConfig(**FIX_BASE, shift_v=True)
+    v = {"s1_shift": dict(),
+         "s2_shift_crop": dict(crop=True),
+         "s3_shift_crop_w16": dict(crop=True, tbptt_chunks=16),
+         "s4_shift_crop_contrast_w16": dict(crop=True, contrast_weight=1.0, tbptt_chunks=16)}
+    return [replace(base, run_name=k, **kw) for k, kw in v.items()]
+
+
+RUNS = {"smoke": smoke, "gate2a": gate2a, "full_a": full_a, "fix_smoke": fix_smoke, "fix_a": fix_a, "fix_b": fix_b,
+        "fix_c": fix_c, "final_b": final_b}
 
 
 def build_runs(name: str) -> List[LLMConfig]:
@@ -46,14 +102,21 @@ def summarize(res: dict) -> str:
         n = r["nll"]
         sw = f" | swap {n['swap']:.3f}" if "swap" in n else ""
         rec = f"  recovered {r['frac_gain_recovered']*100:.0f}% of oracle gap" if "frac_gain_recovered" in r else ""
+        gen_on = {"long_context": 2.15, "dialogue": 2.05, "agentic": 2.97}.get(t)          # Stage A best (generic adapter)
+        vg = f" vs-generic {n['on'] - gen_on:+.2f}" if gen_on else ""
+        ds = f"  DOC-SPECIFIC {r['nll_gain_on_vs_swap']:+.3f} ({r['doc_specific_share']*100:.0f}% of gain)" if "doc_specific_share" in r else ""
         lines.append(f"  {t:13s} NLL none {n['none']:.3f} | off {n['off']:.3f}{sw} | ON {n['on']:.3f} | oracle {n['oracle']:.3f}"
-                     f"   gain(on-vs-none) {r['nll_gain_on_vs_none']:+.3f}{rec}")
+                     f"   gain(on-vs-none) {r['nll_gain_on_vs_none']:+.3f}{vg}{ds}")
+        if r.get("nll_by_fact_distance"):
+            lines.append("  " + " " * 13 + "by fact distance (tokens), swap→on: " + "  ".join(
+                f"{k}: {v['swap']:.2f}→{v['on']:.2f} (n={v['count']})" for k, v in r["nll_by_fact_distance"].items()))
         g = r["generation"]
+        dr = f"  detail-recall none/on/oracle {g['none'].get('digit_recall', float('nan')):.2f}/{g['on'].get('digit_recall', float('nan')):.2f}/{g['oracle'].get('digit_recall', float('nan')):.2f}"
         pref = ""
         if "pref_acc" in r:
             pref = "   pref-acc none/off/on/oracle " + "/".join(f"{r['pref_acc'][m]:.2f}" for m in ("none", "off", "on", "oracle"))
         lines.append(f"  {'':13s} gen contains none/on/oracle {g['none']['contains']:.2f}/{g['on']['contains']:.2f}/"
-                     f"{g['oracle']['contains']:.2f}   F1 {g['none']['f1']:.2f}/{g['on']['f1']:.2f}/{g['oracle']['f1']:.2f}" + pref)
+                     f"{g['oracle']['contains']:.2f}   F1 {g['none']['f1']:.2f}/{g['on']['f1']:.2f}/{g['oracle']['f1']:.2f}" + dr + pref)
     return "\n".join(lines)
 
 

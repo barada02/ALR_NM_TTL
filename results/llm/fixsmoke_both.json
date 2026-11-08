@@ -1,0 +1,542 @@
+{
+ "config": {
+  "run_name": "fixsmoke_both",
+  "base_model": "Qwen/Qwen2-0.5B",
+  "insert": "mid",
+  "insert_layer": -1,
+  "seg_len": 256,
+  "max_ctx_segments": 8,
+  "mem_mode": "B",
+  "mem_hidden": 256,
+  "mem_layers": 2,
+  "rank": 8,
+  "chunk_size": 32,
+  "tbptt_chunks": 8,
+  "inner_lr": 0.2,
+  "inner_clip": 0.1,
+  "use_momentum": false,
+  "second_order": true,
+  "retention_bias": 4.0,
+  "retention_learned": true,
+  "aux_weight": 0.1,
+  "contrast_weight": 1.0,
+  "contrast_margin": 1.0,
+  "crop": true,
+  "crop_curriculum": 0.5,
+  "crop_pre_tokens": 48,
+  "crop_d_min": 32,
+  "data_dir": "/data/miniTitan_data",
+  "types": "long_context,dialogue,agentic",
+  "val_per_type": 6,
+  "gen_eval_per_type": 3,
+  "seed": 0,
+  "batch_size": 4,
+  "steps": 12,
+  "lr": 0.001,
+  "warmup": 100,
+  "grad_clip": 1.0,
+  "log_every": 2,
+  "eval_every": 1000000000,
+  "eval_batches": 12,
+  "gen_max_new": 8,
+  "save_ckpt": false,
+  "out_dir": "/vol/llm/fixsmoke_both"
+ },
+ "git_sha": "102458b-dirty",
+ "memory_params": 3902884,
+ "curve": [
+  {
+   "step": 2,
+   "nll": 5.396533966064453,
+   "grad_norm": 2.5287768840789795,
+   "nll_on_batch": 4.202013969421387,
+   "swap_gap_batch": 0.0015909075736999512,
+   "time_s": 1.7199864387512207,
+   "mem_gb": 4.751008256,
+   "mean_write_gate": 0.12619396904483438,
+   "retention_halflife_tokens": 1226.8519789551233,
+   "state_norm_ratio": 0.12434932589530945,
+   "mean_blend": 0.5118836965411901,
+   "mean_surprise": 0.9828415922820568
+  },
+  {
+   "step": 4,
+   "nll": 4.64974570274353,
+   "grad_norm": 2.874100923538208,
+   "nll_on_batch": 4.107372760772705,
+   "swap_gap_batch": 0.006889045238494873,
+   "time_s": 2.227100372314453,
+   "mem_gb": 4.751008256,
+   "mean_write_gate": 0.11775852111168206,
+   "retention_halflife_tokens": 1228.3653219739012,
+   "state_norm_ratio": 0.12513041496276855,
+   "mean_blend": 0.5175778791308403,
+   "mean_surprise": 0.9860602840781212
+  },
+  {
+   "step": 6,
+   "nll": 4.104685544967651,
+   "grad_norm": 2.94887113571167,
+   "nll_on_batch": 3.4148924350738525,
+   "swap_gap_batch": -0.014415651559829712,
+   "time_s": 2.7548773288726807,
+   "mem_gb": 4.751008256,
+   "mean_write_gate": 0.1451469506137073,
+   "retention_halflife_tokens": 1229.270143389812,
+   "state_norm_ratio": 0.13523824512958527,
+   "mean_blend": 0.5345621146261692,
+   "mean_surprise": 0.9645059183239937
+  },
+  {
+   "step": 8,
+   "nll": 4.912051439285278,
+   "grad_norm": 4.469503879547119,
+   "nll_on_batch": 3.902132034301758,
+   "swap_gap_batch": -0.03537958860397339,
+   "time_s": 3.3972012996673584,
+   "mem_gb": 6.199770624,
+   "mean_write_gate": 0.15935220771158734,
+   "retention_halflife_tokens": 1231.797400355484,
+   "state_norm_ratio": 0.14196746051311493,
+   "mean_blend": 0.5407053654392561,
+   "mean_surprise": 0.9752868587772051
+  },
+  {
+   "step": 10,
+   "nll": 4.204480528831482,
+   "grad_norm": 6.906899929046631,
+   "nll_on_batch": 2.4697136878967285,
+   "swap_gap_batch": -0.006656825542449951,
+   "time_s": 4.408092975616455,
+   "mem_gb": 9.252975104,
+   "mean_write_gate": 0.25044046657858415,
+   "retention_halflife_tokens": 1232.3123977877422,
+   "state_norm_ratio": 0.19073215126991272,
+   "mean_blend": 0.5424170345067978,
+   "mean_surprise": 0.9544858232140541
+  },
+  {
+   "step": 12,
+   "nll": 4.846426725387573,
+   "grad_norm": 5.622354507446289,
+   "nll_on_batch": 4.0802130699157715,
+   "swap_gap_batch": -0.0270082950592041,
+   "time_s": 5.367109298706055,
+   "mem_gb": 9.252975104,
+   "mean_write_gate": 0.2875203609582968,
+   "retention_halflife_tokens": 1232.1379153874611,
+   "state_norm_ratio": 0.18728315830230713,
+   "mean_blend": 0.5580422375351191,
+   "mean_surprise": 0.9378770720213652
+  }
+ ],
+ "quick_eval": [],
+ "final": {
+  "long_context": {
+   "n_val": 6,
+   "nll": {
+    "none": 3.681455115477244,
+    "off": 3.6052931745847068,
+    "swap": 3.509243349234263,
+    "on": 3.5094606280326843,
+    "oracle": 0.5606608986854553
+   },
+   "ppl": {
+    "none": 39.7041261474357,
+    "off": 36.792468893005775,
+    "swap": 33.42296869900663,
+    "on": 33.43023159049282,
+    "oracle": 1.75182989987001
+   },
+   "nll_gain_on_vs_none": 0.17199448744455959,
+   "nll_gain_on_vs_off": 0.09583254655202245,
+   "nll_gain_on_vs_swap": -0.000217278798421372,
+   "frac_gain_recovered": 0.05511240905251736,
+   "doc_specific_share": -0.0012632893161265374,
+   "nll_by_n_segments": {
+    "5": {
+     "none": 3.6238441467285156,
+     "off": 3.5559104681015015,
+     "swap": 3.466955304145813,
+     "on": 3.48505699634552,
+     "oracle": 0.5373481214046478,
+     "count": 2
+    },
+    "6": {
+     "none": 3.0630584955215454,
+     "off": 2.9879802465438843,
+     "swap": 2.882295568784078,
+     "on": 2.893781145413717,
+     "oracle": 0.528418223063151,
+     "count": 3
+    },
+    "7": {
+     "none": 5.651866912841797,
+     "off": 5.555997371673584,
+     "swap": 5.474662780761719,
+     "on": 5.405306339263916,
+     "oracle": 0.7040144801139832,
+     "count": 1
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 2.922989010810852,
+     "off": 2.854258179664612,
+     "swap": 2.7521102031071982,
+     "on": 2.781695246696472,
+     "oracle": 0.5142425497372946,
+     "count": 3
+    },
+    "1024+": {
+     "none": 4.840892791748047,
+     "off": 4.754983901977539,
+     "swap": 4.682566523551941,
+     "on": 4.645577311515808,
+     "oracle": 0.7480133175849915,
+     "count": 2
+    },
+    "<256": {
+     "none": 3.6379780769348145,
+     "off": 3.559016704559326,
+     "swap": 3.4339964389801025,
+     "on": 3.4205234050750732,
+     "oracle": 0.3252111077308655,
+     "count": 1
+    }
+   },
+   "nll_by_fact_position": {
+    "early": {
+     "none": 3.69015052318573,
+     "off": 3.6145484685897826,
+     "swap": 3.524292731285095,
+     "on": 3.5272480726242064,
+     "oracle": 0.6077508568763733,
+     "count": 5
+    },
+    "late": {
+     "none": 3.6379780769348145,
+     "off": 3.559016704559326,
+     "swap": 3.4339964389801025,
+     "on": 3.4205234050750732,
+     "oracle": 0.3252111077308655,
+     "count": 1
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.04761904761904762
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.0
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "1809"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The desalination plant desperately needed to"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the chemical concentration reading"
+     }
+    ],
+    "on": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "1809"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The desalination plant desperately needed to"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "1.000 g/L"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "Elias Vogt was recognized for his service"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The specific part that the desalination"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the titanium dioxide reading"
+     }
+    ]
+   }
+  },
+  "dialogue": {
+   "n_val": 6,
+   "nll": {
+    "none": 2.4704445401827493,
+    "off": 2.453985095024109,
+    "swap": 2.4274319807688394,
+    "on": 2.407368282477061,
+    "oracle": 1.1073075632254283
+   },
+   "ppl": {
+    "none": 11.827703572655627,
+    "off": 11.634619521590935,
+    "swap": 11.329749674674101,
+    "on": 11.104698227176428,
+    "oracle": 3.026199564802497
+   },
+   "nll_gain_on_vs_none": 0.06307625770568848,
+   "nll_gain_on_vs_off": 0.04661681254704808,
+   "nll_gain_on_vs_swap": 0.020063698291778564,
+   "frac_gain_recovered": 0.046272868223765716,
+   "doc_specific_share": 0.3180863770548191,
+   "nll_by_n_segments": {
+    "3": {
+     "none": 2.3266648948192596,
+     "off": 2.308481514453888,
+     "swap": 2.2830970883369446,
+     "on": 2.2456879913806915,
+     "oracle": 1.2088883221149445,
+     "count": 4
+    },
+    "4": {
+     "none": 2.758003830909729,
+     "off": 2.744992256164551,
+     "swap": 2.7161017656326294,
+     "on": 2.7307288646698,
+     "oracle": 0.9041460454463959,
+     "count": 2
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 2.709052038192749,
+     "off": 2.6932180881500245,
+     "swap": 2.668316888809204,
+     "on": 2.6403913497924805,
+     "oracle": 1.2315717577934264,
+     "count": 5
+    },
+    "256-512": {
+     "none": 1.2774070501327515,
+     "off": 1.2578201293945312,
+     "swap": 1.2230074405670166,
+     "on": 1.2422529458999634,
+     "oracle": 0.485986590385437,
+     "count": 1
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.3489683231618716
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.32746294681778554
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.34681003584229386
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a new car"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set up the system"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on a"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a new car"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set up the system"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focused on a"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a 2"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set their ID for"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on Type"
+     }
+    ]
+   }
+  },
+  "agentic": {
+   "n_val": 6,
+   "nll": {
+    "none": 4.2179999351501465,
+    "off": 4.178237756093343,
+    "swap": 4.076783696810405,
+    "on": 4.078533331553142,
+    "oracle": 2.4307113687197366
+   },
+   "ppl": {
+    "none": 67.8975488939972,
+    "off": 65.25076407483134,
+    "swap": 58.95554567713947,
+    "on": 59.05878663878293,
+    "oracle": 11.3669653081413
+   },
+   "nll_gain_on_vs_none": 0.1394666035970049,
+   "nll_gain_on_vs_off": 0.09970442454020123,
+   "nll_gain_on_vs_swap": -0.0017496347427368164,
+   "frac_gain_recovered": 0.07803250477652245,
+   "doc_specific_share": -0.0125451878629845,
+   "nll_by_n_segments": {
+    "2": {
+     "none": 4.594943364461263,
+     "off": 4.551336606343587,
+     "swap": 4.451648394266765,
+     "on": 4.483285268147786,
+     "oracle": 2.6734946568806968,
+     "count": 3
+    },
+    "3": {
+     "none": 3.84105650583903,
+     "off": 3.805138905843099,
+     "swap": 3.7019189993540444,
+     "on": 3.673781394958496,
+     "oracle": 2.187928080558777,
+     "count": 3
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 3.84105650583903,
+     "off": 3.805138905843099,
+     "swap": 3.7019189993540444,
+     "on": 3.673781394958496,
+     "oracle": 2.187928080558777,
+     "count": 3
+    },
+    "256-512": {
+     "none": 4.594943364461263,
+     "off": 4.551336606343587,
+     "swap": 4.451648394266765,
+     "on": 4.483285268147786,
+     "oracle": 2.6734946568806968,
+     "count": 3
+    }
+   },
+   "pref_acc": {
+    "none": 0.6666666666666666,
+    "off": 0.6666666666666666,
+    "swap": 0.6666666666666666,
+    "on": 0.6666666666666666,
+    "oracle": 0.8333333333333334
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.16566113624937154
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.16566113624937154
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.19130216189039717
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to continue the process"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the process"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue the process"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to continue the process"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the process"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue the process"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to release the lock"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the backup"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue with the"
+     }
+    ]
+   }
+  }
+ },
+ "skipped_nonfinite_steps": 0,
+ "train_time_s": 5.367345809936523,
+ "wall_time_s": 20.952393531799316,
+ "peak_gpu_gb": 9.252975104,
+ "versions": {
+  "torch": "2.15.0+cu132",
+  "transformers": "5.22.2"
+ }
+}

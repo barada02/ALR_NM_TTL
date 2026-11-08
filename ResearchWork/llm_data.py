@@ -38,22 +38,31 @@ def to_example(rec: dict) -> Optional[dict]:
 
 def _to_example(rec: dict) -> Optional[dict]:
     t = rec.get("_type")
+    fact_char = None
     if t == "long_context":
-        ctx, q, a = rec["context"], rec["question"], rec["answer"]
+        ctx, q, a = rec["context"].strip(), rec["question"], rec["answer"].strip()
         meta = {"type": t, "fact_position": rec.get("fact_position"), "distractors": rec.get("distractor_count")}
         wrong = None
+        i = ctx.find(a)
+        fact_char = i if i >= 0 else None
     elif t == "dialogue":
-        ctx = "\n".join(f"{x['role'].capitalize()}: {x['content']}" for x in rec["turns"])
+        lines = [f"{x['role'].capitalize()}: {x['content']}" for x in rec["turns"]]
+        ctx = "\n".join(lines)
         q, a = rec["test_question"], rec["correct_answer"]
         anchors = rec.get("memory_anchors") or [{}]
+        est = anchors[0].get("established_at_turn")
+        fact_char = sum(len(l) + 1 for l in lines[:est]) if isinstance(est, int) and 0 <= est < len(lines) else None
         gap = (anchors[0].get("recalled_at_turn", 0) or 0) - (anchors[0].get("established_at_turn", 0) or 0)
         meta = {"type": t, "gap": gap}
         wrong = None
     elif t == "agentic":
         dp = rec["decision_point"]
         steps = [s for s in rec["steps"] if s["step"] < dp["at_step"]]        # only what the agent has seen so far
-        ctx = f"Task: {rec['task']}\n" + "\n".join(
-            f"Step {s['step']} [{s['action']}] input: {s['input']} output: {s['output']}" for s in steps)
+        header = f"Task: {rec['task']}\n"
+        step_lines = [f"Step {s['step']} [{s['action']}] input: {s['input']} output: {s['output']}" for s in steps]
+        ctx = header + "\n".join(step_lines)
+        idx = next((k for k, s in enumerate(steps) if s["step"] == dp["requires_memory_of_step"]), None)
+        fact_char = len(header) + sum(len(l) + 1 for l in step_lines[:idx]) if idx is not None else None
         q = f"At step {dp['at_step']}, what is the correct decision?"
         a, wrong = dp["correct_decision"], dp.get("wrong_decision_if_forgotten")
         meta = {"type": t, "distance": dp["at_step"] - dp["requires_memory_of_step"]}
@@ -61,7 +70,9 @@ def _to_example(rec: dict) -> Optional[dict]:
         return None
     if not (ctx and q and a):
         return None
-    return {"context": ctx.strip(), "question": q.strip(), "answer": a.strip(), "wrong": wrong, "meta": meta}
+    ctx = ctx.strip()                                # (strip only trims trailing/leading blanks; fact_char computed on stripped text above)
+    return {"context": ctx, "question": q.strip(), "answer": a.strip(), "wrong": wrong, "meta": meta,
+            "fact_char": fact_char}
 
 
 def load_split(cfg: LLMConfig) -> Dict[str, Dict[str, List[dict]]]:
@@ -79,7 +90,7 @@ def load_split(cfg: LLMConfig) -> Dict[str, Dict[str, List[dict]]]:
                     skipped += 1
         if skipped:
             print(f"[data] {t}: skipped {skipped} malformed record(s) of {len(exs) + skipped}")
-        random.Random(cfg.seed).shuffle(exs)
+        random.Random(cfg.split_seed).shuffle(exs)
         val = exs[:cfg.val_per_type]
         out[t] = {"val": val, "gen": val[:cfg.gen_eval_per_type], "train": exs[cfg.val_per_type:]}
     return out
@@ -87,9 +98,22 @@ def load_split(cfg: LLMConfig) -> Dict[str, Dict[str, List[dict]]]:
 
 # ── tokenisation ──────────────────────────────────────────────────────────────
 
-def tokenize_example(tok, ex: dict, cfg: LLMConfig) -> dict:
+def tokenize_example(tok, ex: dict, cfg: LLMConfig, progress=None) -> dict:
+    """progress ∈ [0,1] (training only) enables the crop-around-the-fact curriculum; None = full document (eval)."""
     S = cfg.seg_len
-    ctx = tok(ex["context"], add_special_tokens=False)["input_ids"][:cfg.max_ctx_segments * S]
+    ids = tok(ex["context"], add_special_tokens=False)["input_ids"]
+    fact_tok, dist = None, None
+    fc = ex.get("fact_char")
+    if fc is not None:
+        fact_tok = len(tok(ex["context"][:fc], add_special_tokens=False)["input_ids"]) if fc > 0 else 0
+        dist = len(ids) - fact_tok
+    if progress is not None and cfg.crop and fact_tok is not None:
+        dmax = len(ids) - fact_tok
+        dmin = min(cfg.crop_d_min, dmax)
+        dcur = dmin + (dmax - dmin) * min(1.0, progress / max(cfg.crop_curriculum, 1e-6))
+        d = random.randint(dmin, max(dmin, int(dcur)))
+        ids = ids[max(0, fact_tok - cfg.crop_pre_tokens): fact_tok + d]
+    ctx = ids[:cfg.max_ctx_segments * S]
     prompt = tok(PROMPT.format(q=ex["question"]), add_special_tokens=False)["input_ids"]
     eos = tok.eos_token_id
 
@@ -100,18 +124,21 @@ def tokenize_example(tok, ex: dict, cfg: LLMConfig) -> dict:
         prompt = prompt[-(S - 8):]
     a = ans_ids(ex["answer"])[:S - len(prompt)]
     w = ans_ids(ex["wrong"])[:S - len(prompt)] if ex.get("wrong") else None
-    return {"ctx": ctx, "prompt": prompt, "ans": a, "wrong": w, "meta": ex["meta"], "text_answer": ex["answer"]}
+    return {"ctx": ctx, "prompt": prompt, "ans": a, "wrong": w, "meta": ex["meta"], "text_answer": ex["answer"],
+            "fact_tok": fact_tok, "dist_tokens": dist}
 
 
 class QADataset:
-    def __init__(self, examples: List[dict], tok, cfg: LLMConfig):
+    def __init__(self, examples: List[dict], tok, cfg: LLMConfig, progress=None):
         self.examples, self.tok, self.cfg = examples, tok, cfg
+        self.progress = progress                     # shared multiprocessing.Value, updated by the training loop
 
     def __len__(self):
         return len(self.examples)
 
     def __getitem__(self, i):
-        return tokenize_example(self.tok, self.examples[i], self.cfg)
+        p = self.progress.value if self.progress is not None else None
+        return tokenize_example(self.tok, self.examples[i], self.cfg, progress=p)
 
 
 # ── collation ─────────────────────────────────────────────────────────────────
