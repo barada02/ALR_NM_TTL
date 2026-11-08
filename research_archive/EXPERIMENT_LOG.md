@@ -10,11 +10,11 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
   - **Mode B (gradient update, momentum optional) is the chosen branch.** Mode A (learned update rule) is parked.
 - **Synthetic evidence (3 seeds):** Mode B ≫ matched GRU ≫ no memory on the hard `stream` task. The "retention problem" was really a
   *training-horizon* problem: long BPTT + a distance **curriculum** + small step clip lifts acc@512 facts 0.43 → 0.69 (E6).
-- **LLM evidence (frozen Qwen2-0.5B): the memory now recalls documents, after a root-cause fix.** First attempt learned only a generic answer-style adapter
-  (swap ≈ on, E7a). The fix: **next-token values (`shift_v`) + crop-around-the-fact curriculum + a long gradient window** (E7b). Replicated over 3 seeds,
-  long-context answer NLL 3.70 (none) → 1.8–1.9 (generic adapter alone: 2.15), full BPTT 1.42; with the wrong document it falls back to none (3.6). Oracle 0.63.
+- **LLM evidence (frozen Qwen2-0.5B, 3 seeds, 300 val/type): the memory recalls documents.** First attempt learned only a generic answer-style adapter (swap ≈ on, E7a).
+  The fix — **next-token values (`shift_v`) + crop-around-the-fact curriculum + long gradient window** (E7b) — gives, after 6000 steps (E7c): long-context answer NLL
+  **3.67 (no memory) → 1.10±0.03** (generic adapter alone: 2.15; full-context oracle 0.62); wrong document → 3.82; key-detail recall 0.50 (oracle 0.83, none 0.04).
 - **Where things run:** everything on **Modal** (`launch.py`). Do not run models locally.
-- **Next:** Stage B (`final_b`: full BPTT / window 32, 6000 steps, 3 seeds, 300 val/type) confirms the recipe; then scale (Qwen2-1.5B, more segments) and write-up.
+- **Next:** scale (Qwen2-1.5B, 16 segments), a fairer oracle (adapter-matched), harder tests (multi-fact, other domains), then the write-up (Phase 3).
 
 ## Run things
 
@@ -66,6 +66,7 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E5 | Ablations (`abl_*`, 78 runs) | B needs 2nd-order grads (1st-order = chance) and TBPTT ≥4 chunks; momentum no help; A needs aux loss, rank/delayed-aux irrelevant; masking filler writes does *not* fix B (hypothesis refuted); ~1/15 B runs never take off (CE stuck at ln 32) | Keep B: 2nd-order, TBPTT 4, no-momentum slightly better |
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
 | E7a | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | **mid** insertion + window 8 best. But **swap control: 95–99% of the gain is a generic adapter** (no recall) | Gate 2b not passed; diagnose |
+| E7c | Stage B: recipe at 6000 steps, full BPTT vs window 32, 3 seeds | **long-context NLL 1.10±0.03 / 1.15±0.01** (none 3.67, swap 3.82, oracle 0.62); agentic ON 2.41 ≈ oracle 2.42; pref-acc 0.91 vs swap 0.81 | **Gate 2b passed**; use full BPTT + crop + shift_v |
 | E7b | Fixes: crop curriculum, contrastive swap loss, next-token values (`shift_v`) | crop / contrast alone: no recall (contrast is gameable). **`shift_v` + crop + window ≥16: ON 1.79 vs generic 2.15, 3 seeds; full BPTT 1.42; control without `shift_v` 2.18** | Recipe found; Gate 2b passes |
 
 ### E6 — retention round (done)
@@ -140,6 +141,23 @@ fact→question distance (<256 tokens: 1.74, >1024 tokens: 1.72). (3) Generated 
 gold `…concentration of 4.2 ppm` → `4.2 ppm`. Exact-match is still ~0 because gold answers are long phrases and the memory returns the key span — judge by NLL and **detail recall**
 (fraction of the gold's numbers/IDs present in the answer). (4) Wider windows / full BPTT help and no longer explode with the curriculum (earlier full-BPTT runs without crop did).
 Lessons: judge recall by `ON` vs the generic reference, never by swap→on alone (contrastive swap is gameable); a structural cause (what the value *is*) beat all loss-engineering.
+
+### E7c — Stage B (done): the recipe holds, tight error bars
+`final_b`: shift_v + crop curriculum, 6000 steps, lr 3e-4, 3 seeds, 300 val/type (one shared split). Full BPTT vs TBPTT window 32 — **no difference**, both stable (8.7 GB, 22 min on an A10G).
+```
+mean±std over 3 seeds        none    swap    ON          oracle   vs generic(2.15/2.05/2.97)   oracle-gap recovered   detail-recall none/ON/oracle
+long_context  full BPTT      3.67    3.82    1.10±0.03   0.62     −1.05                        84%                    0.04 / 0.50 / 0.83
+              window 32      3.67    3.92    1.15±0.01   0.62     −1.00                        83%                    0.04 / 0.47 / 0.83
+dialogue      full BPTT      2.40    2.11    1.72±0.01   1.13     −0.33                        53%                    0.06 / 0.44 / 0.48
+agentic       full BPTT      4.40    3.23    2.41±0.01   2.42     −0.56                        101%                   preference acc none/swap/ON/oracle 0.39/0.81/0.91/0.80
+```
+Long-context ON NLL by fact→question distance: <256 tokens 1.14 · 256–512 1.24 · 512–1024 1.14 · 1024+ 0.96 → no decay with distance. By fact position: early 1.02, middle 1.38, late 1.32
+(80% of training facts are early; middle/late are rarer — report, don't hide). Example generations (long_context): gold `October 14, 1939` → `October 14, 1939` (exact, no-memory base: `1809`);
+other samples still wrong (`titanium flow-valve assembly TX-7704` → `4,200 kilograms`).
+Caveats: (1) the "oracle" is the frozen base with full attention and **no** answer-style adaptation, so "% of oracle gap" over-credits the memory (agentic 101%: memory + style > oracle); a fair upper
+bound needs an adapter-matched oracle. (2) The generic-adapter reference (2.15/2.05/2.97) comes from Stage A's 150-sample val sets — indicative, not paired. (3) One model (0.5B), one data
+generator (3 facts / 1000-word docs), up to 8 segments. (4) Exact-match is still low; the memory returns the key details more often than whole phrases. (5) Generic style adaptation is still part of the
+none→ON gain (agentic swap 3.23 vs none 4.40); only the swap→ON / ON-vs-generic parts are document-specific.
 
 ## Gotchas (cost us time)
 

@@ -76,8 +76,9 @@ markmap:
   `shift_v` (next-token values) + crop-around-fact curriculum + window ≥16: long-context NLL 3.70 → 1.8–1.9 (3 seeds; generic adapter 2.15; oracle 0.63), full BPTT 1.42;
   wrong document → 3.6 (none); control without `shift_v` 2.18; detail recall 0.40 vs oracle 0.74
 - ❌ contrastive swap loss: gameable (module learns mismatch detection), dropped
-- 🔄 Stage B (`final_b`): full BPTT / window 32, 6000 steps, 3 seeds, 300 val per type
-- ⬜ Next: Qwen2-1.5B, more segments (8 → 16), error bars, then Phase 3 write-up
+- ✅ Stage B (`final_b`, 3 seeds, 300 val/type): full BPTT / window 32 — long-context NLL 3.67 → 1.10±0.03 / 1.15±0.01 (generic adapter 2.15, oracle 0.62), wrong document 3.82;
+  agentic ON 2.41 ≈ oracle 2.42, preference acc 0.91 (swap 0.81); detail recall 0.50 (oracle 0.83); no decay with distance up to 1024+ tokens
+- ⬜ Next: adapter-matched oracle (fair upper bound) · Qwen2-1.5B · 16 segments · multi-fact / other-domain tests · Phase 3 write-up
 
 ## Phase 3 — Scale & characterize ☁️ multi-session
 - ⬜ Qwen2-1.5B + full 30K dataset (data_generation/ output)
@@ -119,3 +120,4 @@ markmap:
 - LLM eval lesson: `off` (starved memory) is worse than none; `swap` (wrong document) is the control that separates recall from adaptation; agentic preference accuracy is a style artifact
 - LLM: same-position (k_t,v_t) memory cannot recall strings; next-token values (`shift_v`) + crop curriculum + long window: long-context NLL 1.42-1.9 vs generic 2.15 (3 seeds), swap ≈ none
 - LLM: contrastive swap loss is gameable (swap→on +1.2 with no ON gain); judge by ON vs generic reference + detail recall
+- LLM Stage B (3 seeds): long-context NLL 3.67 → 1.10±0.03 (generic adapter 2.15, oracle 0.62), wrong doc 3.82, no decay with distance; oracle is not adapter-matched → % of gap over-credits
