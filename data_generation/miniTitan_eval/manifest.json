@@ -1,0 +1,44 @@
+{
+ "version": "programmatic_eval_v1",
+ "seed": 2024,
+ "sizes": {
+  "single": 300,
+  "overwrite": 300,
+  "colliding": 300,
+  "colliding_overwrite": 200,
+  "haystack": 400,
+  "absent": 200
+ },
+ "files": {
+  "single": {
+   "path": "eval_single.jsonl",
+   "n": 300,
+   "avg_words": 1013
+  },
+  "overwrite": {
+   "path": "eval_overwrite.jsonl",
+   "n": 300,
+   "avg_words": 1055
+  },
+  "colliding": {
+   "path": "eval_colliding.jsonl",
+   "n": 300,
+   "avg_words": 1063
+  },
+  "colliding_overwrite": {
+   "path": "eval_colliding_overwrite.jsonl",
+   "n": 200,
+   "avg_words": 1094
+  },
+  "haystack": {
+   "path": "eval_haystack.jsonl",
+   "n": 400,
+   "avg_words": 2770
+  },
+  "absent": {
+   "path": "eval_absent.jsonl",
+   "n": 200,
+   "avg_words": 1029
+  }
+ }
+}
