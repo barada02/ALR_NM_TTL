@@ -288,6 +288,30 @@ colliding_overwrite 0.24 / 0.28 / 0.30 (n=200, SE ≈ 0.03) — a suggestive tre
 - Stage 0 is done on model v1 (E11); the next stage is Stage 2 — TRAIN on programmatic overwrite / colliding data (cheap, exact ground truth, no API) mixed with the Gemini data, hold out attributes / templates, re-evaluate with ranking; chunk size becomes testable then.
 - Generator diversity: held-out family via Fireworks serverless open-weight models (key `FIREWORKS_API_KEY` in `.env`, never printed), after Stage 2.
 
+## Pre-registration — Stage 2 (written BEFORE any Stage 2 training run; do not edit after results arrive)
+**Question.** Model v1 gains document-specific NLL but is at chance at entity-value binding (E11). Is that a *training-signal gap* (H_data) or an *architecture / representation limit* (H_arch)?
+**Test.** Train the memory on data that demands binding and measure binding on documents never seen, on both seen and held-out surface forms.
+
+*Training data (programmatic, exact ground truth, `data_generation/programmatic_eval.py --train_out`, pools="train"):* `prog_colliding` 4,000 documents → 10,635 examples (each document reused with 2-4 different target
+entities as separate examples: 2/3/4 questions in 2232/901/867 documents; k ∈ {2,4,8} same-type facts per document), `prog_overwrite` 6,000 documents, `prog_single` 4,000 documents. Train pools use 4 of 8 device types, 24 locations,
+the 3 original fact / 3 restate templates and 2 question templates. Held-out pools use the OTHER 4 devices, 16 NEW locations, 2 NEW fact + 2 NEW restate templates and 2 NEW question templates. Disjointness is machine-checked
+(no held-out location in any training fact sentence; no eval document in the training data). Caveat: held-out device names still appear in training *filler* sentences (mentioned in passing, no fact attached).
+*Eval sets:* `eval_seen_*` (train pools, seed 4242) and `eval_heldout_*` (held-out pools, seed 4343), each: single 300, overwrite 300, colliding 300, colliding_overwrite 200, haystack 200; one question per document.
+*Recipe:* Stage B (6000 steps, batch 4, lr 3e-4, hidden 256, chunk 32, full BPTT, shift_v; Gemini documents use the crop curriculum, programmatic documents are NOT cropped so the colliders stay in the document). ONLY the mixture changes.
+*Arms:* `s2_mix50` = 50% Gemini (⅓ each type) + 25% colliding + 15% overwrite + 10% clean single (3 seeds) · `s2_mix25` = 75% Gemini + 12.5 / 7.5 / 5 (dose arm, 1 seed) · `s2_single50` = 50% Gemini + 50% clean single-fact
+programmatic, NO collisions / overwrites (control for "more programmatic data", 1 seed) · `s2_mix50_c8` = `s2_mix50` with chunk 8 (chunk size after overwrite training, 1 seed).
+*Metric:* likelihood ranking = share of items whose lowest-NLL candidate is the CURRENT value among {current, old values, distractor values} (≤4 candidates; chance: colliding 0.33, overwrite 0.45, colliding_overwrite 0.25).
+Baseline = model v1 (Stage B, 3 seeds), measured on the same seen / held-out sets before judging.
+
+**Success criteria (fixed now).**
+1. *Binding learned:* `s2_mix50` mean over 3 seeds, `colliding` ranking ≥ **0.55 on seen** AND ≥ **0.45 on held-out** (chance 0.33; frozen oracle 0.78).
+2. *No forgetting:* Gemini long-context NLL on the 300-sample validation set (same split as Stage B) ≤ **1.15** (Stage B 1.10 ± 0.03, + 0.05 tolerance), mean over 3 seeds.
+3. *Control:* `s2_single50` must NOT reach criterion 1 (otherwise the gain is not from collision training).
+4. Reported without a threshold: overwrite / colliding_overwrite / haystack ranking, dose (`s2_mix25`), chunk 8 vs 32, seed spread.
+**Decision rules.** (a) 1 and 2 hold → H_data supported, binding generalises across held-out templates / entities → proceed to the Fireworks held-out generator family and a public benchmark. (b) Seen passes, held-out fails
+→ binding is learned but template-specific → more template / generator diversity is the lever. (c) Seen colliding ranking ≤ 0.40 → H_data rejected: the limit is architectural / representational (e.g. keys derived from a single mid-layer token
+position cannot carry the entity), and the next work is the key/value construction, not data. (d) Criterion 2 fails → the programmatic data is hurting the original distribution; lower the programmatic share.
+
 ## Decisions between the second review and Stage 0
 - Chunk size is a first-class variable before "model v1" is frozen (E8: chunk 16 → 4 lifts overwrite accuracy 0.72 → 0.95); screened at LLM scale together with memory width in `fix_d`
   (chunk 32/16/8 with a constant ~1024-token gradient window; hidden 256/512/1024) — 1 seed to screen, 3 to confirm; width is a MEASUREMENT (the earlier synthetic width sweep moved acc@512 only 0.43 → ~0.46) and is reported per unit

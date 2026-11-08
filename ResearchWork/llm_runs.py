@@ -94,6 +94,32 @@ def fix_d() -> List[LLMConfig]:
     return [replace(base, run_name=k, **kw) for k, kw in v.items()]
 
 
+GEM = ("long_context", "dialogue", "agentic")
+PROG = ("prog_colliding", "prog_overwrite", "prog_single")
+
+
+def _mix(gemini: float, colliding: float, overwrite: float, single: float) -> str:
+    parts = [f"{t}:{gemini / 3:.5f}" for t in GEM] + [f"prog_colliding:{colliding}", f"prog_overwrite:{overwrite}", f"prog_single:{single}"]
+    return ",".join(parts)
+
+
+def stage2() -> List[LLMConfig]:
+    """Stage 2 (see EXPERIMENT_LOG 'Pre-registration'): can the memory learn entity-value BINDING when the data demands it?
+    Stage B recipe (6000 steps, shift_v, full BPTT, lr 3e-4, hidden 256, chunk 32); ONLY the mixture changes.
+      s2_mix50      50% Gemini · 25% colliding (2-4 questions per document) · 15% overwrite · 10% clean single-fact   (3 seeds)
+      s2_mix25      75% Gemini · 12.5 / 7.5 / 5                                                                      dose arm
+      s2_single50   50% Gemini · 50% clean single-fact programmatic                                                  control: more programmatic data alone
+      s2_mix50_c8   as s2_mix50 with chunk 8 (gradient window 1024 tokens)                                           chunk size after overwrite training
+    Programmatic documents are not cropped (crop_annotated=False) so the colliders stay in the document."""
+    base = LLMConfig(**{**FIX_BASE, "steps": 6000, "eval_every": 2000, "tbptt_chunks": 0}, shift_v=True, crop=True, val_per_type=300,
+                     gen_eval_per_type=100, types=",".join(GEM + PROG), eval_types=",".join(GEM))
+    out = [replace(base, run_name=f"s2_mix50_s{s}", seed=s, mix=_mix(0.50, 0.25, 0.15, 0.10)) for s in (0, 1, 2)]
+    out += [replace(base, run_name="s2_mix25_s0", mix=_mix(0.75, 0.125, 0.075, 0.05)),
+            replace(base, run_name="s2_single50_s0", mix=_mix(0.50, 0.0, 0.0, 0.50)),
+            replace(base, run_name="s2_mix50_c8_s0", chunk_size=8, tbptt_chunks=128, mix=_mix(0.50, 0.25, 0.15, 0.10))]
+    return out
+
+
 def fix_b() -> List[LLMConfig]:
     """Root-cause test: same-position (k_t, v_t) cannot store a multi-token string → next-token values (shift_v).
     Success = `on` NLL clearly BELOW the generic adapter (long_context 2.15) and exact-match recall > 0, not just swap→on."""
@@ -106,7 +132,7 @@ def fix_b() -> List[LLMConfig]:
 
 
 RUNS = {"smoke": smoke, "gate2a": gate2a, "full_a": full_a, "fix_smoke": fix_smoke, "fix_a": fix_a, "fix_b": fix_b,
-        "fix_c": fix_c, "final_b": final_b, "paired_ctl": paired_ctl, "fix_d": fix_d}
+        "fix_c": fix_c, "final_b": final_b, "paired_ctl": paired_ctl, "fix_d": fix_d, "stage2": stage2}
 
 
 def build_runs(name: str) -> List[LLMConfig]:

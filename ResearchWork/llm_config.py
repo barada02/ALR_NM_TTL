@@ -54,6 +54,12 @@ class LLMConfig:
     crop_pre_tokens: int = 48        # context kept before the fact
     crop_d_min: int = 32             # shortest distance (tokens after the fact starts)
 
+    # mixture (Stage 2): "type:weight,..." sampled with replacement; empty = uniform over all training examples
+    mix: str = ""
+    eval_types: str = ""             # restrict the end-of-run full evaluation to these types (empty = all); programmatic types are
+                                     # evaluated afterwards with the eval-only runner (seen / held-out sets)
+    crop_annotated: bool = False     # False: programmatic (annotated) documents are NOT cropped — cropping would cut the colliders out
+
     # data
     data_dir: str = "/data/miniTitan_data"
     types: str = "long_context,dialogue,agentic"

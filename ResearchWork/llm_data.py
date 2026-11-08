@@ -107,7 +107,7 @@ def tokenize_example(tok, ex: dict, cfg: LLMConfig, progress=None) -> dict:
     if fc is not None:
         fact_tok = len(tok(ex["context"][:fc], add_special_tokens=False)["input_ids"]) if fc > 0 else 0
         dist = len(ids) - fact_tok
-    if progress is not None and cfg.crop and fact_tok is not None:
+    if progress is not None and cfg.crop and fact_tok is not None and (cfg.crop_annotated or not ex["meta"].get("annot")):
         dmax = len(ids) - fact_tok
         dmin = min(cfg.crop_d_min, dmax)
         dcur = dmin + (dmax - dmin) * min(1.0, progress / max(cfg.crop_curriculum, 1e-6))

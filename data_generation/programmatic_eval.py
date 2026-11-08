@@ -29,7 +29,7 @@ import re
 import string
 from typing import Dict, List, Tuple
 
-VERSION = "programmatic_eval_v1"
+VERSION = "programmatic_eval_v2"   # v2 adds train/heldout pools; pools="all" reproduces v1 byte for byte
 
 DEVICES = ["flow meter", "pressure sensor", "compressor", "cooling pump", "control valve", "generator", "transformer", "gearbox"]
 LOCS = ["Deck 3", "Deck 4", "Bay 7", "Bay 2", "Tower B", "Annex 2", "Level 5", "Zone D", "Hall 4", "Dock 9", "Wing A", "Unit 12",
@@ -52,6 +52,24 @@ ATTRS = {"serial": ("serial number", v_serial), "cost": ("replacement cost", v_c
 FACT_T = ["The {noun} of the {ent} is {v}.", "Records state that the {noun} of the {ent} is {v}.", "For the {ent}, the {noun} is {v}."]
 RESTATE_T = ["Following a recent update, the {noun} of the {ent} is now {v}.", "A correction was filed: the {noun} of the {ent} has changed to {v}.",
              "After the changeover, the {ent} now has the {noun} {v}."]
+
+# Held-out machinery (v2). pools="all" is the v1 behaviour (all 8 devices, 20 locations, 3 fact / 3 restate templates, ONE question
+# template, no extra rng draws). "train" / "heldout" use DISJOINT entity types, locations and surface templates, so ranking on
+# held-out sets cannot be won by template-fitting or by memorising entity names.
+LOCS2 = ["Annex 7", "Ridge 4", "Basin 2", "Cell 9", "Depot 5", "Field 8", "Gate 3", "Harbor 12", "Island 6", "Junction 4", "Keep 2", "Lab 11",
+         "Mill 7", "Nest 3", "Outpost 9", "Plant 5", "Quay 8", "Rig 14", "Silo 6", "Terminal 2", "Unit 31", "Vent 4", "Wharf 10", "Yard 13",
+         "Arch 5", "Bluff 3", "Camp 8", "Dome 2", "Edge 9", "Fort 7", "Grid 12", "Hub 6", "Inlet 4", "Jetty 11", "Kiln 3", "Lock 8",
+         "Mast 5", "Node 10", "Orbit 2", "Pad 9"]
+FACT_T_HELD = ["According to the asset register, the {noun} of the {ent} reads {v}.", "The register lists {v} as the {noun} of the {ent}."]
+RESTATE_T_HELD = ["The {noun} of the {ent} was revised and now reads {v}.", "Per the latest amendment, {v} is the new {noun} of the {ent}."]
+Q_T = {"all": ["What is the {noun} of the {ent}?"],
+       "train": ["What is the {noun} of the {ent}?", "Which {noun} is listed for the {ent}?"],
+       "heldout": ["Can you tell me the {noun} of the {ent}?", "Please state the {noun} of the {ent}."]}
+POOLS = {
+    "all": dict(devices=DEVICES, locs=LOCS, fact=FACT_T, restate=RESTATE_T),
+    "train": dict(devices=[DEVICES[i] for i in (0, 2, 4, 6)], locs=LOCS2[:24], fact=FACT_T, restate=RESTATE_T),
+    "heldout": dict(devices=[DEVICES[i] for i in (1, 3, 5, 7)], locs=LOCS2[24:], fact=FACT_T_HELD, restate=RESTATE_T_HELD),
+}
 
 TEAMS = ["operations team", "audit team", "safety committee", "maintenance crew", "planning group", "logistics office", "review board"]
 DOCS = ["maintenance schedule", "incident report", "budget proposal", "training plan", "logistics summary", "shift roster", "supplier contract"]
@@ -106,8 +124,11 @@ def bucket(frac: float) -> str:
 
 
 class Gen:
-    def __init__(self, seed: int):
+    def __init__(self, seed: int, pools: str = "all"):
         self.r = random.Random(seed)
+        self.pools = pools
+        P = POOLS[pools]
+        self.devices, self.locs, self.fact_t, self.restate_t = P["devices"], P["locs"], P["fact"], P["restate"]
 
     def value(self, attr: str, used: set) -> str:
         while True:
@@ -120,11 +141,13 @@ class Gen:
         return f"{device} at {loc}"
 
     def fact_sentence(self, attr, device, loc, v, restate=False):
-        t = self.r.choice(RESTATE_T if restate else FACT_T)
+        t = self.r.choice(self.restate_t if restate else self.fact_t)
         return t.format(noun=ATTRS[attr][0], ent=self.ent(device, loc), v=v)
 
     def question(self, attr, device, loc, current=False):
-        return f"What is the {'current ' if current else ''}{ATTRS[attr][0]} of the {self.ent(device, loc)}?"
+        qs = Q_T[self.pools]
+        t = qs[0] if len(qs) == 1 else self.r.choice(qs)          # no rng draw for pools="all" (keeps v1 reproducible)
+        return t.format(noun=("current " if current else "") + ATTRS[attr][0], ent=self.ent(device, loc))
 
     def record(self, text, q, a, frac, cat, **annot):
         annot.update(category=category_name(cat), fact_pos_frac=round(frac, 3), doc_words=len(text.split()))
@@ -134,7 +157,7 @@ class Gen:
     # ── categories ──
     def single(self):
         r = self.r
-        attr, device, loc = r.choice(list(ATTRS)), r.choice(DEVICES), r.choice(LOCS)
+        attr, device, loc = r.choice(list(ATTRS)), r.choice(self.devices), r.choice(self.locs)
         used = set()
         v = self.value(attr, used)
         frac = r.uniform(0.03, 0.97)
@@ -144,8 +167,8 @@ class Gen:
 
     def overwrite(self, n_colliding=0):
         r = self.r
-        attr, device = r.choice(list(ATTRS)), r.choice(DEVICES)
-        locs = r.sample(LOCS, 1 + n_colliding)
+        attr, device = r.choice(list(ATTRS)), r.choice(self.devices)
+        locs = r.sample(self.locs, 1 + n_colliding)
         used = set()
         n_ver = 2 if r.random() < 0.7 else 3
         gap_kind = r.choice(["short", "medium", "long"])
@@ -171,8 +194,8 @@ class Gen:
 
     def colliding(self, k):
         r = self.r
-        attr, device = r.choice(list(ATTRS)), r.choice(DEVICES)
-        locs = r.sample(LOCS, k)
+        attr, device = r.choice(list(ATTRS)), r.choice(self.devices)
+        locs = r.sample(self.locs, k)
         used = set()
         vals = [self.value(attr, used) for _ in range(k)]
         fracs = [r.uniform(0.03, 0.97) for _ in range(k)]
@@ -182,12 +205,30 @@ class Gen:
         return self.record(text, self.question(attr, device, locs[t]), vals[t], pos[t], "colliding", attr=attr, overwritten=False, n_versions=1,
                            n_colliding=k - 1, absent=False, old_values=[], distractor_values=[v for i, v in enumerate(vals) if i != t], all_values=vals)
 
+    def colliding_multi(self, k, m):
+        """ONE colliding document, m (2-4) separate examples that each query a different entity — multiplies the binding signal
+        per document (a single question gives one binding gradient per ~1000 words)."""
+        r = self.r
+        attr, device = r.choice(list(ATTRS)), r.choice(self.devices)
+        locs = r.sample(self.locs, k)
+        used = set()
+        vals = [self.value(attr, used) for _ in range(k)]
+        facts = [(r.uniform(0.03, 0.97), self.fact_sentence(attr, device, locs[i], vals[i])) for i in range(k)]
+        text, pos = build_doc(r, r.randint(850, 1150), facts)
+        doc_id = r.getrandbits(40)
+        out = []
+        for t in r.sample(range(k), m):
+            out.append(self.record(text, self.question(attr, device, locs[t]), vals[t], pos[t], "colliding", attr=attr, overwritten=False,
+                                   n_versions=1, n_colliding=k - 1, absent=False, old_values=[],
+                                   distractor_values=[v for i, v in enumerate(vals) if i != t], all_values=vals, doc_id=doc_id, n_questions=m))
+        return out
+
     def haystack(self, n_docs):
         r = self.r
-        attr, device = r.choice(list(ATTRS)), r.choice(DEVICES)
-        locs = r.sample(LOCS, min(n_docs, len(LOCS)))
-        if n_docs > len(LOCS):
-            locs = [r.choice(LOCS) for _ in range(n_docs)]       # locations may repeat across docs; values never do
+        attr, device = r.choice(list(ATTRS)), r.choice(self.devices)
+        locs = r.sample(self.locs, min(n_docs, len(self.locs)))
+        if n_docs > len(self.locs):
+            locs = [r.choice(self.locs) for _ in range(n_docs)]       # locations may repeat across docs; values never do
         used = set()
         vals = [self.value(attr, used) for _ in range(n_docs)]
         t = r.randrange(n_docs)
@@ -201,15 +242,15 @@ class Gen:
         frac = fr_t / max(len(full.split()), 1)
         q_loc = locs[t]
         same_loc = sum(1 for l in locs if l == q_loc)
-        assert same_loc == 1 or n_docs > len(LOCS), "ambiguous question"
+        assert same_loc == 1 or n_docs > len(self.locs), "ambiguous question"
         return self.record(full, self.question(attr, device, q_loc), vals[t], frac, "haystack", attr=attr, overwritten=False, n_versions=1,
                            n_colliding=n_docs - 1, n_docs=n_docs, absent=False, old_values=[],
                            distractor_values=[v for i, v in enumerate(vals) if i != t], all_values=vals)
 
     def absent(self):
         r = self.r
-        attr, device = r.choice(list(ATTRS)), r.choice(DEVICES)
-        locs = r.sample(LOCS, 3)
+        attr, device = r.choice(list(ATTRS)), r.choice(self.devices)
+        locs = r.sample(self.locs, 3)
         used = set()
         k = r.randint(1, 2)
         vals = [self.value(attr, used) for _ in range(k)]
@@ -224,8 +265,8 @@ def category_name(c):
     return c
 
 
-def generate(seed: int, sizes: Dict[str, int]) -> Dict[str, List[dict]]:
-    g = Gen(seed)
+def generate(seed: int, sizes: Dict[str, int], pools: str = "all") -> Dict[str, List[dict]]:
+    g = Gen(seed, pools)
     out = {c: [] for c in ("single", "overwrite", "colliding", "colliding_overwrite", "haystack", "absent")}
     for _ in range(sizes["single"]):
         out["single"].append(g.single())
@@ -248,7 +289,7 @@ def verify(rec: dict):
     q = rec["question"]
     if an["absent"]:
         assert a == "unknown"
-        loc = re.search(r" at (.+?)\?", q).group(1)
+        loc = re.search(r" at (.+?)[?.]$", q).group(1)
         dev = [d for d in DEVICES if d in q][0]
         # no sentence states a value for the asked entity
         for s in re.split(r"(?<=\.)\s+", ctx):
@@ -262,7 +303,7 @@ def verify(rec: dict):
     if an["old_values"]:
         pos = [ctx.find(v) for v in an["old_values"]] + [ctx.find(a)]
         assert pos == sorted(pos) and len(set(pos)) == len(pos), "versions must appear in order: old first, current last"
-    loc = re.search(r" at (.+?)\?", q).group(1)
+    loc = re.search(r" at (.+?)[?.]$", q).group(1)
     sent = [s for s in re.split(r"(?<=\.)\s+", ctx) if a in s][0]
     assert f" at {loc}" in sent or f"{loc}" in sent, "the answer sentence must be about the asked entity"
     for dv in an["distractor_values"]:
@@ -271,13 +312,63 @@ def verify(rec: dict):
     assert an["fact_pos_frac"] >= 0 and rec["fact_position"] in ("early", "middle", "late")
 
 
+def generate_train(seed: int, n_colliding_docs: int, n_overwrite: int, n_single: int) -> Dict[str, List[dict]]:
+    """Programmatic TRAINING data (pools='train'): colliding docs with 2-4 questions each, overwrite docs, clean single-fact docs."""
+    g = Gen(seed, "train")
+    out = {"prog_colliding": [], "prog_overwrite": [], "prog_single": []}
+    for i in range(n_colliding_docs):
+        k = [2, 4, 8][i % 3]
+        m = g.r.randint(2, min(4, k))
+        out["prog_colliding"] += g.colliding_multi(k, m)
+    for i in range(n_overwrite):
+        out["prog_overwrite"].append(g.overwrite(n_colliding=0))
+    for _ in range(n_single):
+        out["prog_single"].append(g.single())
+    return out
+
+
+def write_jsonl(path: str, recs: List[dict]):
+    with open(path, "w", encoding="utf-8") as f:
+        for rec in recs:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out_dir", default="miniTitan_eval")
     ap.add_argument("--seed", type=int, default=2024)
     ap.add_argument("--scale", type=float, default=1.0, help="multiply the default category sizes")
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--splits", action="store_true", help="v2: write eval_seen_* and eval_heldout_* (disjoint entity types / locations / templates)")
+    ap.add_argument("--train_out", default="", help="v2: write programmatic TRAINING files minititan_prog_*.jsonl into this directory")
     a = ap.parse_args()
+    if a.train_out:
+        data = generate_train(a.seed + 1000, n_colliding_docs=4000, n_overwrite=6000, n_single=4000)
+        os.makedirs(a.train_out, exist_ok=True)
+        for name, recs in data.items():
+            for rec in recs:
+                verify(rec)
+            write_jsonl(os.path.join(a.train_out, f"minititan_{name}.jsonl"), recs)
+            docs = len({r["context"] for r in recs})
+            print(f"{name}: {len(recs)} examples from {docs} documents (verified)")
+        return
+    if a.splits:
+        sizes = {"single": 300, "overwrite": 300, "colliding": 300, "colliding_overwrite": 200, "haystack": 200, "absent": 0}
+        os.makedirs(a.out_dir, exist_ok=True)
+        manifest = {"version": VERSION, "files": {}}
+        for tag, pools, seed in (("seen", "train", 4242), ("heldout", "heldout", 4343)):
+            data = generate(seed, sizes, pools)
+            for cat, recs in data.items():
+                if not recs:
+                    continue
+                for rec in recs:
+                    verify(rec)
+                write_jsonl(os.path.join(a.out_dir, f"eval_{tag}_{cat}.jsonl"), recs)
+                manifest["files"][f"eval_{tag}_{cat}"] = {"n": len(recs), "pools": pools, "seed": seed}
+        with open(os.path.join(a.out_dir, "manifest_splits.json"), "w") as f:
+            json.dump(manifest, f, indent=1)
+        print("wrote", len(manifest["files"]), "split eval files (all verified)")
+        return
     base = {"single": 300, "overwrite": 300, "colliding": 300, "colliding_overwrite": 200, "haystack": 400, "absent": 200}
     sizes = {k: (24 if a.check else max(4, int(v * a.scale))) for k, v in base.items()}
     data = generate(a.seed, sizes)

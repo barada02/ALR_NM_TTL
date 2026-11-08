@@ -148,6 +148,8 @@ def eval_generation(model, tok, items: List[dict], cfg: LLMConfig, pad_id: int, 
 def full_eval(model, tok, splits, cfg: LLMConfig, pad_id: int, device) -> dict:
     res = {}
     for t, d in splits.items():
+        if cfg.eval_types and t not in cfg.eval_types.split(","):
+            continue
         val = [tokenize_example(tok, ex, cfg) for ex in d["val"]]
         gen = [tokenize_example(tok, ex, cfg) for ex in d["gen"]]
         MODES_ = modes_for(cfg)
@@ -224,8 +226,20 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
     g = torch.Generator().manual_seed(cfg.seed)
     train_collate = (lambda items: collate_oracle(items, cfg, pad_id)) if cfg.train_mode == "adapter_oracle" \
         else (lambda items: collate(items, cfg, pad_id))
-    loader = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True, num_workers=2,
-                        collate_fn=train_collate, generator=g)
+    if cfg.mix:
+        from torch.utils.data import WeightedRandomSampler
+        w = {k: float(v) for k, v in (p.split(":") for p in cfg.mix.split(","))}
+        weights = []
+        for t in splits:                                   # same order as train_ex
+            n = len(splits[t]["train"])
+            weights += [w.get(t, 0.0) / max(n, 1)] * n
+        sampler = WeightedRandomSampler(weights, num_samples=cfg.steps * cfg.batch_size, replacement=True, generator=g)
+        loader = DataLoader(ds, batch_size=cfg.batch_size, sampler=sampler, drop_last=True, num_workers=2, collate_fn=train_collate)
+        if verbose:
+            print("[mix]", {t: f"{w.get(t, 0):.3f} of samples ({len(splits[t]['train'])} examples)" for t in splits})
+    else:
+        loader = DataLoader(ds, batch_size=cfg.batch_size, shuffle=True, drop_last=True, num_workers=2,
+                            collate_fn=train_collate, generator=g)
     if verbose:
         print(f"[llm] memory params {n_params/1e6:.2f}M  insert={cfg.insert}  mode={cfg.mem_mode}  "
               f"seg={cfg.seg_len} chunk={cfg.chunk_size} tbptt={cfg.tbptt_chunks}")
