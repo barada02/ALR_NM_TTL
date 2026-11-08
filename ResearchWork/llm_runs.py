@@ -82,6 +82,18 @@ def paired_ctl() -> List[LLMConfig]:
             replace(base, run_name="ctl_adapter_oracle", train_mode="adapter_oracle")]
 
 
+def fix_d() -> List[LLMConfig]:
+    """Screen (1 seed, 3000 steps, 300 val/type) the two levers that may change 'model v1':
+    chunk size (E8: stale overwrite values fall 0.24 → 0.05 from chunk 16 → 4) and memory width (measurement, not an expected fix).
+    The gradient window is kept at ~1024 tokens so ONLY the chunk size changes (32→w32, 16→w64, 8→w128).
+    Report accuracy per unit of fast state (state_floats = 2·hidden·896) and the wall-time cost of smaller chunks."""
+    base = LLMConfig(**{**FIX_BASE, "steps": 3000, "eval_every": 1000, "tbptt_chunks": 32}, shift_v=True, crop=True,
+                     val_per_type=300, gen_eval_per_type=100, chunk_size=32)
+    v = {"d_c32": dict(), "d_c16": dict(chunk_size=16, tbptt_chunks=64), "d_c8": dict(chunk_size=8, tbptt_chunks=128),
+         "d_h512": dict(mem_hidden=512), "d_h1024": dict(mem_hidden=1024)}
+    return [replace(base, run_name=k, **kw) for k, kw in v.items()]
+
+
 def fix_b() -> List[LLMConfig]:
     """Root-cause test: same-position (k_t, v_t) cannot store a multi-token string → next-token values (shift_v).
     Success = `on` NLL clearly BELOW the generic adapter (long_context 2.15) and exact-match recall > 0, not just swap→on."""
@@ -94,7 +106,7 @@ def fix_b() -> List[LLMConfig]:
 
 
 RUNS = {"smoke": smoke, "gate2a": gate2a, "full_a": full_a, "fix_smoke": fix_smoke, "fix_a": fix_a, "fix_b": fix_b,
-        "fix_c": fix_c, "final_b": final_b, "paired_ctl": paired_ctl}
+        "fix_c": fix_c, "final_b": final_b, "paired_ctl": paired_ctl, "fix_d": fix_d}
 
 
 def build_runs(name: str) -> List[LLMConfig]:

@@ -187,6 +187,18 @@ linear d=64 (4,096, 4× less state)                       0.75     –        0.
    cure take-off (3/3 seeds, vs 2/3 at chunk 16). Cost: more chunk steps. Chunk 1 would be exact; a recency-aware within-chunk write (position-weighted / cumulative decay) is the untested fix.
 3. **Does the nonlinearity earn its keep?** At MATCHED state it depends on the task. Distinct keys, overwrite: tie (0.72 vs 0.73). **Colliding keys: MLP 0.72 vs linear 0.49** (Mode B loses nothing from collisions:
    0.73 → 0.72; linear drops 0.72 → 0.49). **Long stream (E6 recipe): MLP 0.69 vs linear 0.41 at 512 facts** (2.5× fewer parameters: 36K vs 91K). State size matters a lot: linear with 4× less state is far worse.
+**Parameters × fast state × accuracy** (successful seeds; Mode B took off in 2/3 seeds at chunk 16 — every other row 3/3):
+```
+host                           core params   fast-state floats   overwrite K16R4   K64R8   colliding K16R4   K64R8
+GRU (small / large)            36,589 / 253K        75 / 250     0.10 / 0.11       0.05    0.10 / 0.11       0.05
+Mode A (learned rule)             252,547          16,384        0.73              0.37    0.61              0.27
+Mode B, 2-layer MLP                36,292          16,384        0.73              0.49    0.72              0.46
+linear assoc. memory d=64          23,876           4,096        0.42              0.21    0.28              0.13
+linear assoc. memory d=128         90,660          16,384        0.72              0.42    0.49              0.22
+stream task, E6 recipe:   acc@64 / @256 / @512  — MLP (36,292 params, 16,384 state) 1.00 / 0.88 / 0.69 · linear d=128 (90,660, 16,384) 0.99 / 0.67 / 0.41 · linear d=64 (23,876, 4,096) 0.37 / 0.18 / 0.12
+```
+The claim, stated precisely: **at equal fast-state size (16,384 floats) the MLP memory matches a linear memory on distinct-key overwrite and beats it under interference (colliding keys 0.72 vs 0.49; long stream 0.69 vs 0.41)
+while using 2.5× fewer parameters.** The d=64 linear memory has 4× less state and is not part of that claim. "Nonlinearity earns its keep" is supported only under interference, not on plain overwrite.
 4. Mode B still has ~1/3 seeds that never take off at chunk 16 in this recipe (`titan_b` 2/3 on `upd_main` and `upd_similar`); chunk ≤8 gave 3/3.
 Caveats: GRU still not state-matched in the matrix sense; no gated DeltaNet / GLA / Mamba baseline yet; keys/values are still embedding-bound single tokens; LLM data has almost no overwrites, so (1)-(2) are a
 limitation to report, not a blocker for the document-recall claim.
@@ -202,9 +214,22 @@ agentic                      4.40   2.88               2.41 ± 0.01             
 agentic preference accuracy: doc-free adapter 0.86 · memory 0.91 · frozen oracle 0.80 · oracle+adapter 0.96   (the style artifact alone gives 0.86)
 long_context detail recall (key numbers/IDs of the gold answer): none 0.04 · memory 0.50 · frozen oracle 0.83
 ```
+**Protocol (read before quoting any percentage).** The three runs share: the same memory module (3.9M params), 6000 steps, lr 3e-4, batch 4, one validation split (`split_seed` 0, 300 per type) and the
+same frozen Qwen2-0.5B. Differences that remain and matter: the oracle adapter trains on FULL documents with full attention (no crop curriculum, no segmentation), and it sees all context directly, so its NLL is a
+ceiling for "document available + same adaptation", not a competing method. The primary result is the three raw NLLs (document-free adapter, memory, adapter-matched oracle). Any percentage depends entirely on the
+denominator: measured from the document-free adapter the gap closed is 48% / 23% / 33% (long-context / dialogue / agentic); measured from the no-memory baseline it is 71% / 44% / 68%. Both are "true"; quote the raw NLLs
+and treat percentages as illustrative.
+
 Reading. (1) The document-specific gain is real and large relative to seed noise (0.01-0.03). (2) The old oracle was unfair: with the same adaptation, full attention gets long-context NLL 0.06 (copying is
 near-deterministic), so the memory closes about half — not 84% — of the fair gap on long-context, and a quarter to a third on dialogue / agentic. (3) The earlier generic-adapter reference (2.15 / 2.05 / 2.97) was
 close to the paired one (2.06 / 1.98 / 2.88), so the E7 conclusions stand. (4) The remaining gap is the headline for improvement; capacity of the 459K-float state is the first suspect (E8: accuracy tracks state size).
+
+## Decisions since the second review
+- Chunk size is a first-class variable before "model v1" is frozen (E8: chunk 16 → 4 lifts overwrite accuracy 0.72 → 0.95); screened at LLM scale together with memory width in `fix_d`
+  (chunk 32/16/8 with a constant ~1024-token gradient window; hidden 256/512/1024) — 1 seed to screen, 3 to confirm; width is a MEASUREMENT (the earlier synthetic width sweep moved acc@512 only 0.43 → ~0.46) and is reported per unit
+  of fast state (2·hidden·896 floats: 0.46M / 0.92M / 1.8M).
+- Generator for the held-out evaluation family: open-weight models on Fireworks serverless (a different family from Gemini). The key goes in `.env` as `FIREWORKS_API_KEY`; code reads it only through a launcher-style loader and never prints it.
+- Gated DeltaNet runs in parallel on the synthetic side; it gates the Qwen2-1.5B decision, not the LLM evals. Stage 0 evals (programmatic overwrite / colliding facts / colliding haystacks / absent-fact) run after "model v1" is locked.
 
 ## Open items (from two external reviews, ranked)
 1. Standalone gated DeltaNet (state-matched) on the synthetic tasks — required before submission; `lin_b_d128` is only a linear associative memory.

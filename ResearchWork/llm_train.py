@@ -294,7 +294,9 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
     if cfg.save_ckpt:
         os.makedirs(cfg.out_dir, exist_ok=True)
         torch.save(model.memory.state_dict(), os.path.join(cfg.out_dir, f"{cfg.run_name or 'run'}_memory.pt"))
-    return {"config": asdict(cfg), "git_sha": sha, "memory_params": n_params, "curve": curve, "quick_eval": quick,
+    state_floats = sum(o * i for o, i in model.memory.memory.shapes())          # per-sequence fast state (the fair-comparison axis)
+    return {"config": asdict(cfg), "git_sha": sha, "memory_params": n_params, "state_floats": state_floats,
+            "curve": curve, "quick_eval": quick,
             "final": final, "skipped_nonfinite_steps": skipped, "train_time_s": train_time,
             "wall_time_s": time.time() - t_start, "peak_gpu_gb": torch.cuda.max_memory_allocated() / 1e9,
             "versions": {"torch": torch.__version__, "transformers": transformers.__version__}}
