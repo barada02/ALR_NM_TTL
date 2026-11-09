@@ -71,6 +71,9 @@ POOLS = {
     "heldout": dict(devices=[DEVICES[i] for i in (1, 3, 5, 7)], locs=LOCS2[24:], fact=FACT_T_HELD, restate=RESTATE_T_HELD),
 }
 
+PRONOUN_EVENTS = ["was moved last week", "was serviced on Monday", "was inspected by the night shift", "was recalibrated after the audit",
+                  "was relabelled during the review"]
+
 TEAMS = ["operations team", "audit team", "safety committee", "maintenance crew", "planning group", "logistics office", "review board"]
 DOCS = ["maintenance schedule", "incident report", "budget proposal", "training plan", "logistics summary", "shift roster", "supplier contract"]
 PERIODS = ["weekly", "monthly", "quarterly", "morning", "evening", "annual", "emergency"]
@@ -247,6 +250,41 @@ class Gen:
                            overwritten=True, n_versions=2, n_colliding=0, absent=False, old_values=[v_early], distractor_values=[],
                            all_values=[v_early, v_late], variant=variant, cue_value=cue_value, later_value=v_late)
 
+    def paraphrase(self, kind: str, k: int):
+        """P1 / P2 sets of DESIGN_ENTITY_KEYS.md §8 (colliding document, k same-type facts, question targets one).
+          reorder  the fact and the question name the entity in DIFFERENT forms ("flow meter at Ridge 4" vs "Ridge 4 flow meter" /
+                   "Ridge 4's flow meter"), in either direction; all facts of the document use the same form
+          partial  facts use "flow meter at Ridge 4", the question drops the device word: "the unit at Ridge 4"
+          pronoun  the entity is in the PREVIOUS sentence: "The flow meter at Ridge 4 was moved last week. Its serial number is X." """
+        r = self.r
+        attr, device = r.choice(list(ATTRS)), r.choice(self.devices)
+        noun = ATTRS[attr][0]
+        locs = r.sample(self.locs, k)
+        used = set()
+        vals = [self.value(attr, used) for _ in range(k)]
+        t = r.randrange(k)
+        canon = lambda l: f"{device} at {l}"
+        alt = r.choice([lambda l: f"{l} {device}", lambda l: f"{l}'s {device}"])
+        if kind == "reorder":
+            fact_form, q_form = (canon, alt) if r.random() < 0.5 else (alt, canon)
+        elif kind == "partial":
+            fact_form, q_form = canon, (lambda l: f"unit at {l}")
+        else:
+            fact_form, q_form = canon, canon
+        facts = []
+        for i in range(k):
+            if kind == "pronoun":
+                sent = f"The {canon(locs[i])} {r.choice(PRONOUN_EVENTS)}. Its {noun} is {vals[i]}."
+            else:
+                sent = f"The {noun} of the {fact_form(locs[i])} is {vals[i]}."
+            facts.append((r.uniform(0.03, 0.97), sent))
+        text, pos = build_doc(r, r.randint(850, 1150), facts)
+        q = f"What is the {noun} of the {q_form(locs[t])}?"
+        cat = {"reorder": "p1_reorder", "partial": "p1_partial", "pronoun": "p2_pronoun"}[kind]
+        return self.record(text, q, vals[t], pos[t], cat, attr=attr, overwritten=False, n_versions=1, n_colliding=k - 1, absent=False,
+                           old_values=[], distractor_values=[v for i, v in enumerate(vals) if i != t], all_values=vals,
+                           fact_mention=fact_form(locs[t]), question_mention=q_form(locs[t]), device=device, location=locs[t])
+
     def haystack(self, n_docs):
         r = self.r
         attr, device = r.choice(list(ATTRS)), r.choice(self.devices)
@@ -336,6 +374,27 @@ def verify(rec: dict):
     assert an["fact_pos_frac"] >= 0 and rec["fact_position"] in ("early", "middle", "late")
 
 
+def verify_para(rec: dict):
+    """Invariants of the P1 / P2 sets."""
+    a, ctx, an = rec["answer"], rec["context"], rec["annot"]
+    assert ctx.count(a) == 1, "answer must appear exactly once"
+    vals = [a] + an["distractor_values"]
+    assert len(set(vals)) == len(vals) and all(v in ctx for v in vals)
+    sents = re.split(r"(?<=[.])\s+", ctx)            # any whitespace, incl. paragraph breaks
+    s_ans = [x for x in sents if a in x][0]
+    if an["category"] == "p2_pronoun":
+        assert s_ans.startswith("Its ") and an["location"] not in s_ans and an["device"] not in s_ans, "pronoun sentence must not name the entity"
+        prev = sents[sents.index(s_ans) - 1]
+        assert an["fact_mention"] in prev, "the entity must be in the previous sentence"
+    else:
+        assert an["fact_mention"] in s_ans, "the fact sentence must use the fact form"
+        assert an["question_mention"] != an["fact_mention"] and an["question_mention"] in rec["question"]
+        assert an["fact_mention"] not in rec["question"], "the question must not repeat the fact's exact mention"
+    for dv in an["distractor_values"]:
+        s2 = [x for x in sents if dv in x][0]
+        assert an["location"] not in s2, "a distractor value is attached to the asked location"
+
+
 def generate_train(seed: int, n_colliding_docs: int, n_overwrite: int, n_single: int) -> Dict[str, List[dict]]:
     """Programmatic TRAINING data (pools='train'): colliding docs with 2-4 questions each, overwrite docs, clean single-fact docs."""
     g = Gen(seed, "train")
@@ -364,9 +423,22 @@ def main():
     ap.add_argument("--scale", type=float, default=1.0, help="multiply the default category sizes")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--splits", action="store_true", help="v2: write eval_seen_* and eval_heldout_* (disjoint entity types / locations / templates)")
+    ap.add_argument("--para", action="store_true", help="write the P1 / P2 paraphrase and pronoun sets (DESIGN_ENTITY_KEYS.md 8)")
     ap.add_argument("--cue", action="store_true", help="write the overwrite cue-probe sets eval_cue_{orig,cuefree,cuefirst}.jsonl (train pools)")
     ap.add_argument("--train_out", default="", help="v2: write programmatic TRAINING files minititan_prog_*.jsonl into this directory")
     a = ap.parse_args()
+    if a.para:
+        os.makedirs(a.out_dir, exist_ok=True)
+        for tag, pools, seed in (("seen", "train", 6060), ("heldout", "heldout", 6161)):
+            g = Gen(seed, pools)
+            p1 = [g.paraphrase("reorder" if i % 3 else "partial", [2, 4][i % 2]) for i in range(300)]
+            p2 = [g.paraphrase("pronoun", [2, 4][i % 2]) for i in range(300)]
+            for name, recs in (("p1", p1), ("p2", p2)):
+                for rec in recs:
+                    verify_para(rec)
+                write_jsonl(os.path.join(a.out_dir, f"eval_{tag}_{name}.jsonl"), recs)
+                print(f"eval_{tag}_{name}: {len(recs)} records (verified)")
+        return
     if a.cue:
         os.makedirs(a.out_dir, exist_ok=True)
         for i, variant in enumerate(("orig", "cuefree", "cuefirst")):

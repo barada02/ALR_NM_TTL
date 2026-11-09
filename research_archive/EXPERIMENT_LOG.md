@@ -441,6 +441,11 @@ DESIGN_ENTITY_KEYS.md §8.
 **Added to the confirmation report:** relative contribution of the local vs context part of the composite key — mean norms of ℓ and W_c·c during training, and eval-only ablations (local part zeroed / context part zeroed)
 of the read ranking. If the local part is vestigial, the design doc's "composite" description must be simplified to "context key with a vestigial local term".
 
+**P1 / P2 sets built before any held-out evaluation** (`programmatic_eval.py --para`; seen pools seed 6060, held-out pools seed 6161; 300 each; k = 2 / 4; all invariants machine-checked incl. "the question
+never repeats the fact's exact mention" and "the pronoun sentence never names the entity"). P1 = 200 reordered mentions ("flow meter at Ridge 4" vs "Ridge 4 flow meter" / "Ridge 4's flow meter", either
+direction) + 100 partial ("the unit at Ridge 4"); P2 = "The <entity> was <event>. Its <attribute> is V." **Stated limitation:** P1 / P2 hold out the ENTITIES (devices, locations) but use fixed sentence templates
+("The <attribute> of the <entity> is V." — which is also a training template — and "Its <attribute> is V."), so they test paraphrased mentions and pronoun reference, not unseen templates.
+
 ### E15 screen — v5 arms, 1 seed each (seen set only; the held-out set has NOT been evaluated)
 All five arms warm-started cleanly (R: no new parameters; A1 / D: W_c; A2 / A3: W_c + attention pool) and passed the abort check at step 1000. Probes on `eval_seen_colliding` (n = 300, chance 0.29) at steps 2000 and 3000;
 the held-out set is untouched until an arm is locked (reviewer guardrail).
