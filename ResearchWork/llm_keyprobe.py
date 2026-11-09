@@ -154,7 +154,11 @@ def stack(feats, side_q, side_d, li, kmax, stats=None):
 
 
 def top1(logits, mask):
-    return (logits.argmax(-1) == 0).float()             # the asked fact is always stored at index 0
+    """Tie-aware top-1. The asked fact is stored at index 0, so a plain argmax would credit every exact tie to it (this happened at
+    layer 0, where identical tokens give identical vectors). A tie among m facts counts as 1/m (= random tie-breaking)."""
+    mx = logits.max(-1, keepdim=True).values
+    ties = (logits >= mx - 1e-6) & mask
+    return ties[:, 0].float() / ties.sum(-1).clamp(min=1).float()
 
 
 def run_keyprobe(cfg: LLMConfig, train_path: str, test_paths: Dict[str, str], n_train: int = 2000, epochs: int = 40,
@@ -208,7 +212,7 @@ def run_keyprobe(cfg: LLMConfig, train_path: str, test_paths: Dict[str, str], n_
                             hit = top1(probe(Q.to(device), D.to(device), M.to(device)), M.to(device)).cpu()
                             ks = torch.tensor([f["k"] for f in feats[name][0]])
                             cell[f"{name}/{tag}"] = hit.mean().item()
-                            cell[f"{name}/{tag}/ci95"] = wilson(int(hit.sum()), len(hit))
+                            cell[f"{name}/{tag}/ci95"] = wilson(int(round(hit.sum().item())), len(hit))
                             cell[f"{name}/{tag}/by_k"] = {int(k): hit[ks == k].mean().item() for k in ks.unique()}
                 for name in test_paths:
                     ks = [f["k"] for f in feats[name][0]]

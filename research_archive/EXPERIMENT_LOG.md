@@ -23,6 +23,9 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
 - **Where binding fails (E13, pre-registered probes): ADDRESSING, not storage.** Queried with a fact's own write key, the memory returns that fact's value well above chance (storage 0.50-0.63 vs chance 0.29, every healthy
   model incl. model v1); but the key built at the question position matches the asked fact's write key no better than a colliding fact's (0.28-0.31), and neither does the raw hidden state there (0.26-0.28). Overwrite works
   because it needs no entity addressing (one entity; the later write wins: recency, not a lexical cue — this corrects E12). Next: key construction (entity-aware keys), guided by a supervised linear-probe test.
+- **Redesign target (E14, pre-registered linear key probe): pooled ENTITY keys.** No linear map recovers the asked entity from the positions the memory uses today (question answer-token vs the token before the value:
+  held-out 0.33, below the 0.35 "not present" line; the write position fails at every layer). Pooling over the entity tokens on both sides works at the SAME layer 12 on held-out entities and templates: 0.82 (one shared map:
+  0.99; raw cosine 0.71). So the fix is key construction — key the write by the fact's entity mention, read with the question's entity / span — not more data, not a different layer.
 - **Goal (decided):** a workshop-style *mechanism* paper (not a deployable context-extension method). External review (2 independent engineers) ranked the open risks — see "Open items".
 - **Interference (E8):** overwrite works but ~75-94% of its errors are STALE values, caused by lost write order inside a chunk (smaller chunks fix it). At matched state size the 2-layer
   MLP memory ties a linear memory on distinct-key overwrite but beats it on colliding keys (0.72 vs 0.49) and on long streams (0.69 vs 0.41).
@@ -82,6 +85,7 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
 | E7a | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | **mid** insertion + window 8 best. But **swap control: 95–99% of the gain is a generic adapter** (no recall) | Gate 2b not passed; diagnose |
 | E9 | LLM paired controls: document-free adapter + adapter-matched oracle (`paired_ctl`) | Fair ceiling is far lower than the old oracle (long-context 0.06 vs 0.62). Memory beats the doc-free adapter by +0.96 / +0.26 / +0.48 NLL; closes 48% / 23% / 33% of the fair gap | Report ON vs doc-free adapter and the fair gap; drop the old "% of oracle gap" |
+| E14 | Supervised linear key probe (pre-registered): frozen model, layers 0/6/12/18/23, question answer/entity/span vs fact write/entity, held-out entities + templates | Current positions (answer vs write) not linearly present (0.33); pooled entity keys work at layer 12 (0.82; shared map 0.99); answer position only matches fact entities at later layers (0.45 / 0.55) | Rule (2): key construction — pooled entity keys |
 | E13 | Localisation probes (pre-registered): storage / key / hidden / read top-1 on colliding facts + overwrite cue probe, 6 models | Storage above chance in every healthy model; key, hidden and read at chance → rule (A): addressing failure, entity relation not in the frozen single-position representation as a dominant direction. Overwrite = recency (cue-free 0.83), not a cue leak | Key construction is the fix; data is not |
 | E12 | Stage 2 (pre-registered): train on colliding / overwrite / single programmatic data, 50/25/15/10 mixture, 3 seeds + dose + control arms | Binding not learned (colliding ranking seen 0.31, held-out 0.34 vs chance 0.33); 2/3 seeds lost document recall (generic adapter); the one healthy seed gets overwrite 0.94 (a surface cue, not binding); single-fact control 1.36 NLL, colliding 0.38 | Criteria 1+2 FAIL; confounded by recall collapse → fine-tune from model v1, probe the overwrite cue |
 | E11 | Stage 0: zero-shot eval of model v1 on programmatic overwrite / colliding / haystack / absent sets (new style) — NLL, generation, likelihood ranking | NLL gains document-specific (wrong doc worse than none) but entity binding at chance (0.33 vs 0.33; haystack 0.31); exact generation ≈ 0; the frozen oracle itself is stale 37% / confused 22-45% | Train on overwrite/colliding data (Stage 2); report binding by ranking, not generation |
@@ -388,6 +392,32 @@ Stage 2 collapsed seed    0.48                  0.48               0.51 / 0.49  
 Rule: leak if `orig` ≥ 0.85 AND `cuefree` ≤ 0.60 → **not triggered** (cuefree 0.83). Cue-following ≥ 0.70 → **not triggered** (0.30). The healthy seed's overwrite skill is mainly RECENCY (the later write wins in ΔW), with a
 modest cue effect (~0.07-0.13). This corrects E12, which guessed "a surface cue". It is consistent with E13: overwrite needs no entity addressing (one entity), colliding facts do. The control prefers the later value even more
 (0.87-0.88) but drops to 0.58 when the later statement uses a restatement template it never saw — template sensitivity of the readout, not a cue.
+
+### E14 — supervised linear key probe (done, judged by the pre-registered mapping)
+2,000 training-pool colliding examples to fit the probe; tested on `eval_seen_colliding` and `eval_heldout_colliding` (NEW devices, locations, fact / question templates), 300 each, chance 0.29; 0 examples skipped.
+**Bug found and fixed before interpreting:** the first run used a plain argmax while the asked fact always sits at index 0, so exact ties were credited to it. At layer 0 identical tokens (":" at the answer position, "is" before many
+values) give identical vectors → layer-0 `write` rows read 0.70 held-out / 1.00 seen. Scoring is now tie-aware (a tie among m facts counts 1/m); those rows drop to chance (0.28-0.30) and every other cell is unchanged. The first
+run is kept as `results/llm_probe/keyprobe_argmax_tiebug.json`. (E13 used argmax too, but on contextual vectors that cannot tie exactly, and its key/read results were at chance anyway — the verdict there stands.)
+```
+held-out top-1 [Wilson 95%]        separate map         shared   raw    | seen (separate)   train
+L0  entity  vs entity (CONTROL)    0.91 [0.87,0.94]     1.00     1.00   | 1.00              1.00     ← lexical match; ≥0.80 required → probe pipeline valid
+L12 answer  vs write  (TODAY)      0.33 [0.28,0.39]     0.30     0.32   | 0.69              1.00     ← rule (1) FAILS: < 0.35; seen 0.69 = memorised entity directions
+L12 answer  vs entity              0.38 [0.32,0.43]     0.41     0.29   | 1.00              1.00     ← ambiguous
+L12 entity  vs write               0.34 [0.29,0.40]     0.41     0.33   | 0.80              1.00
+L12 entity  vs entity              0.82 [0.78,0.86]     0.99     0.71   | 1.00              1.00     ← rule (2) PASSES
+L12 span    vs entity              0.67 [0.61,0.72]     0.90     0.48   | 1.00              1.00     ← rule (2) PASSES
+L18 answer  vs entity              0.45 [0.39,0.50]     0.44     0.39   | 1.00              1.00     ← borderline
+L23 answer  vs entity              0.55 [0.49,0.60]     0.50     0.32   | 1.00              1.00     ← rule (3), later layer only
+document `write` position, any layer / question feature: 0.27-0.37 held-out — never above the 0.45 line
+```
+**Verdict.** (1) fails: where the memory looks today (question answer token vs the token before the value), no linear map recovers the entity for new entities / templates; the in-distribution 0.69 is memorisation. The
+document side is the harder half: the write position never carries a generalising entity code at any layer. (2) passes at the insertion layer: pooling over the entity tokens (question) and the fact's entity mention (document)
+addresses the right fact on held-out entities and templates — 0.82 with separate maps, 0.99 with ONE shared map, even 0.71 untrained. (3) the answer token only starts to carry the entity at layers 18-23, weaker than (2).
+**Design implication (for the next step, not yet built):** keep layer 12; change what the key is built from — the fact's ENTITY MENTION on the write side and the question's entity / span on the read side, with one shared
+projection. Constraint found in the templates: in `"The register lists {v} as the {noun} of the {ent}."` the entity comes AFTER the value, so a causal window ending at the value is not enough; writes need a sentence- or
+clause-level pooled key (e.g. write at the end of the sentence). An auxiliary key loss from the programmatic annotations can pull the question key to the right fact's key.
+**Caveat that limits the claim:** the entity-vs-entity success is substantially LEXICAL — the question repeats the entity's name ("flow meter at Ridge 4"), which is why it transfers to unseen names (raw cosine already 0.71).
+Paraphrased or pronoun references are not tested here and are the obvious next stress test for entity-pooled keys.
 
 ## Pre-registration — supervised linear key probe (E14), written BEFORE running; do not edit after results arrive
 Agreed with the reviewer after E13: skip the fine-tune pilot (E13 already answers what it was for), leave the chunk-8 result uninterpreted, run this probe; close the DeltaNet lr question on the side (`gdn_lr_hi`: 3e-2, 1e-1).
