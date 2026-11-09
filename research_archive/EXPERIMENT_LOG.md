@@ -389,6 +389,25 @@ Rule: leak if `orig` ≥ 0.85 AND `cuefree` ≤ 0.60 → **not triggered** (cuef
 modest cue effect (~0.07-0.13). This corrects E12, which guessed "a surface cue". It is consistent with E13: overwrite needs no entity addressing (one entity), colliding facts do. The control prefers the later value even more
 (0.87-0.88) but drops to 0.58 when the later statement uses a restatement template it never saw — template sensitivity of the readout, not a cue.
 
+## Pre-registration — supervised linear key probe (E14), written BEFORE running; do not edit after results arrive
+Agreed with the reviewer after E13: skip the fine-tune pilot (E13 already answers what it was for), leave the chunk-8 result uninterpreted, run this probe; close the DeltaNet lr question on the side (`gdn_lr_hi`: 3e-2, 1e-1).
+**Question.** Can a FIXED LINEAR MAP extract "which entity is being asked about" from the frozen model, for entities and templates never seen in probe training? (E13's hidden test was raw cosine only.)
+**Setup** (`llm_keyprobe.py`, `launch.py keyprobe`; frozen Qwen2-0.5B, no memory involved). Probe training: 2,000 colliding examples from the programmatic TRAINING corpus (train pools). Tests: `eval_seen_colliding`
+(same pools, other documents) and `eval_heldout_colliding` (NEW devices, NEW locations, NEW fact / question templates) — 300 each, k = 2 / 4 / 8 facts, chance ≈ 0.29. Features at layers 0, 6, 12 (= the memory's insertion
+layer), 18, 23; question side: `answer` (the token the memory reads with), `entity` (mean over the entity tokens in the question), `span` (mean over the question); document side: `write` (the token before the fact's first
+value token = where the memory writes its key) and `entity` (mean over the entity tokens of that fact's sentence). Probe: score_i = cos(A·q, B·d_i)/τ, cross-entropy over the k facts, z-scored with training statistics;
+`separate` maps (the most permissive linear test) and `shared` A = B (closest to the memory's single W_k); raw cosine also reported. Metric: held-out top-1 with a Wilson 95% interval, by k.
+**Positive control:** layer 0, q=`entity` vs d=`entity` is a lexical match → held-out ≥ 0.80 required, otherwise the probe pipeline is broken and nothing below is interpreted. (It is a control, not evidence of usable keys.)
+**Thresholds** (held-out top-1, `separate` probe; set against storage 0.50-0.63 and chance 0.29): ≥ 0.45 = the information is linearly present; < 0.35 = not linearly present; in between = ambiguous, reported as such.
+**Decision mapping.**
+(1) layer 12, q=`answer`, d=`write` ≥ 0.45 → the information is where the memory already looks; the projection was never pushed to use it → a KEY-TRAINING OBJECTIVE (auxiliary loss pulling the question key toward the asked
+fact's write key and away from colliders, from the programmatic annotations). Training change, no architecture change. (If only `separate` passes and `shared` does not: separate question / write key projections.)
+(2) layer 12 passes only with pooled positions (q=`entity`/`span` and/or d=`entity`) → key CONSTRUCTION change: pool keys over entity / span tokens.
+(3) passes only at layers 18 / 23 → source keys from a later layer or move the insertion.
+(4) < 0.35 everywhere above layer 0 → the frozen representation does not expose entity identity usably at read time → options narrow to later insertion, a small trainable cross-attention over the question span, or accepting
+content-level (not binding-level) memory as the result.
+Seen-set accuracy far above held-out = the probe memorised entity directions; only held-out counts.
+
 ## Pre-registration — localisation probes (E13), written BEFORE running them; do not edit after results arrive
 Decided with the external reviewer: before any more training, localise WHERE binding fails with eval-only probes. Order: (1) chunk-8 arm — had already finished before the stop request; its result is committed but
 NOT interpreted (it was trained under the regime that collapsed seeds). (2) the probes below. (3) only then a ONE-seed fine-tune pilot from the Stage B checkpoint, with the E12 binding criteria unchanged, whose only job is

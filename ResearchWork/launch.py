@@ -50,6 +50,8 @@ def main(argv):
         args = ["run", os.path.join("ResearchWork", "modal_app.py") + "::main", "--sweep", *argv[1:]]
     elif argv and argv[0] == "llm":
         args = ["run", os.path.join("ResearchWork", "modal_llm.py") + "::main", "--run", *argv[1:]]
+    elif argv and argv[0] == "keyprobe":
+        args = ["run", os.path.join("ResearchWork", "modal_llm.py") + "::keyprobe_main", *argv[1:]]
     elif argv and argv[0] == "probe":
         args = ["run", os.path.join("ResearchWork", "modal_llm.py") + "::probe_main", "--run", *argv[1:]]
     elif argv and argv[0] == "eval":

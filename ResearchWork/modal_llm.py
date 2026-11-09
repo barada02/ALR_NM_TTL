@@ -108,6 +108,28 @@ def probe_llm(run: str, files: list, tag: str = "probe", sha: str = "") -> dict:
     return res
 
 
+@app.function(image=image, gpu=GPU, cpu=4.0, memory=32768, timeout=2 * 60 * 60,
+              volumes={"/data": data_vol, "/cache": cache_vol, "/vol": res_vol})
+def keyprobe_llm(n_train: int = 2000, epochs: int = 40, sha: str = "") -> dict:
+    """Supervised linear key probe on the FROZEN model (no memory checkpoint involved)."""
+    sys.path.insert(0, REMOTE_SRC)
+    from llm_config import LLMConfig
+    from llm_keyprobe import run_keyprobe
+
+    cfg = LLMConfig()
+    rep = run_keyprobe(cfg, "/data/miniTitan_data/minititan_prog_colliding.jsonl",
+                       {"seen": "/data/miniTitan_eval/eval_seen_colliding.jsonl",
+                        "heldout": "/data/miniTitan_eval/eval_heldout_colliding.jsonl"},
+                       n_train=n_train, epochs=epochs)
+    rep["git_sha"] = sha
+    os.makedirs("/vol/llm_probe", exist_ok=True)
+    with open("/vol/llm_probe/keyprobe.json", "w") as f:
+        json.dump(rep, f)
+    res_vol.commit()
+    cache_vol.commit()
+    return rep
+
+
 def _git_sha() -> str:
     try:
         sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
@@ -131,6 +153,21 @@ def probe_main(run: str, files: str = "eval_seen_colliding,eval_heldout_collidin
     with open(path, "w") as f:
         json.dump(res, f, indent=1)
     print(f"saved {path}\n{summarize_probe(res)}")
+
+
+@app.local_entrypoint()
+def keyprobe_main(n_train: int = 2000, epochs: int = 40):
+    sys.path.insert(0, HERE)
+    from llm_keyprobe import summarize_keyprobe
+
+    rep = keyprobe_llm.remote(n_train, epochs, _git_sha())
+    out_dir = os.path.join(ROOT, "results", "llm_probe")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, "keyprobe.json")
+    with open(path, "w") as f:
+        json.dump(rep, f, indent=1)
+    print("saved", path)
+    print(summarize_keyprobe(rep))
 
 
 @app.local_entrypoint()

@@ -128,6 +128,13 @@ def gdn_lr(seeds):
     return _grid("gdn_lr", v, tuple(seeds)[:2], base)
 
 
+def gdn_lr_hi(seeds):
+    """Close the DeltaNet lr question: accuracy was still rising at 1e-2 (0.19 -> 0.24 read-first). Add 3e-2 and 1e-1."""
+    base = {**STREAM, "use_momentum": False, "train_facts_max": 256, "tbptt_chunks": 0, "curriculum": 0.5}
+    v = {f"{h}_lr{lr}": {**GDN_HOSTS[h], "lr": lr} for h in ("gdn", "gdn_rf") for lr in (3e-2, 1e-1)}
+    return _grid("gdn_lr_hi", v, tuple(seeds)[:2], base)
+
+
 def lin_stream(seeds):
     """Linear associative memory on the stream task with the E6 recipe; compare with ret_combo__full256_cur_clip05 (2-layer)."""
     base = {**STREAM, "use_momentum": False, "train_facts_max": 256, "tbptt_chunks": 0, "curriculum": 0.5, "inner_clip": 0.05}
@@ -259,7 +266,7 @@ def all_p1(seeds):
 SWEEPS: Dict[str, Callable] = {f.__name__: f for f in
                                [smoke, p1_typed, p1_stream, all_p1, *ABLATIONS, abl_all, *RETENTION, ret_all, ret_bptt, ret_combo,
                                 upd_main, upd_similar, lin_stream, upd_diag, gdn_update, gdn_similar, gdn_stream,
-                                gdn_tuned, gdn_lr]}
+                                gdn_tuned, gdn_lr, gdn_lr_hi]}
 
 
 def build_sweep(name: str, seeds: Optional[Iterable[int]] = None) -> List[ExpConfig]:
