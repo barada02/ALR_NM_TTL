@@ -62,13 +62,25 @@ LOCS2 = ["Annex 7", "Ridge 4", "Basin 2", "Cell 9", "Depot 5", "Field 8", "Gate 
          "Mast 5", "Node 10", "Orbit 2", "Pad 9"]
 FACT_T_HELD = ["According to the asset register, the {noun} of the {ent} reads {v}.", "The register lists {v} as the {noun} of the {ent}."]
 RESTATE_T_HELD = ["The {noun} of the {ent} was revised and now reads {v}.", "Per the latest amendment, {v} is the new {noun} of the {ent}."]
+# v2 held-out pool (E16, built after the E15 confirmation burned "heldout"): device types, locations, fact and question templates
+# disjoint from BOTH "train" and "heldout"; frames include value-before-entity and passive forms.
+DEVICES_V2 = ["heat exchanger", "boiler", "conveyor", "chiller", "inverter", "air handler", "relay panel", "turbine"]
+LOCS_V2 = ["Crest 7", "Delta 4", "Ember 2", "Fjord 9", "Glen 5", "Haven 3", "Iris 8", "Knoll 6", "Ledge 2", "Mesa 11", "Notch 5", "Oasis 3",
+           "Prism 7", "Reef 4", "Spire 9", "Tarn 6", "Vale 2", "Weir 8", "Zenith 3", "Atrium 10", "Bastion 4", "Cove 12", "Dune 5", "Estuary 7"]
+FACT_T_V2 = ["Inspectors confirmed {v} as the {noun} for the {ent}.", "On the commissioning sheet, the {ent} is given a {noun} of {v}.",
+             "The figure {v} has been logged as the {noun} belonging to the {ent}.", "The {ent} was assigned the {noun} {v} at handover."]
+# NB: no template may START with the value — with shift_v the first value token's write pair crosses the sentence boundary, and the
+# masked cross-sentence pair is never written (a stated limitation of the v5 design, not something an eval should probe by accident).
+RESTATE_T_V2 = ["The {ent} has since been reassigned the {noun} {v}.", "An updated sheet now gives {v} as the {noun} of the {ent}."]
 Q_T = {"all": ["What is the {noun} of the {ent}?"],
        "train": ["What is the {noun} of the {ent}?", "Which {noun} is listed for the {ent}?"],
-       "heldout": ["Can you tell me the {noun} of the {ent}?", "Please state the {noun} of the {ent}."]}
+       "heldout": ["Can you tell me the {noun} of the {ent}?", "Please state the {noun} of the {ent}."],
+       "heldout_v2": ["Do you know the {noun} recorded for the {ent}?", "Tell me the {noun} assigned to the {ent}."]}
 POOLS = {
     "all": dict(devices=DEVICES, locs=LOCS, fact=FACT_T, restate=RESTATE_T),
     "train": dict(devices=[DEVICES[i] for i in (0, 2, 4, 6)], locs=LOCS2[:24], fact=FACT_T, restate=RESTATE_T),
     "heldout": dict(devices=[DEVICES[i] for i in (1, 3, 5, 7)], locs=LOCS2[24:], fact=FACT_T_HELD, restate=RESTATE_T_HELD),
+    "heldout_v2": dict(devices=DEVICES_V2, locs=LOCS_V2, fact=FACT_T_V2, restate=RESTATE_T_V2),
 }
 
 PRONOUN_EVENTS = ["was moved last week", "was serviced on Monday", "was inspected by the night shift", "was recalibrated after the audit",
@@ -423,10 +435,28 @@ def main():
     ap.add_argument("--scale", type=float, default=1.0, help="multiply the default category sizes")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--splits", action="store_true", help="v2: write eval_seen_* and eval_heldout_* (disjoint entity types / locations / templates)")
+    ap.add_argument("--v2", action="store_true", help="E16: write the fresh held-out set eval_v2_colliding.jsonl (pool heldout_v2)")
     ap.add_argument("--para", action="store_true", help="write the P1 / P2 paraphrase and pronoun sets (DESIGN_ENTITY_KEYS.md 8)")
     ap.add_argument("--cue", action="store_true", help="write the overwrite cue-probe sets eval_cue_{orig,cuefree,cuefirst}.jsonl (train pools)")
     ap.add_argument("--train_out", default="", help="v2: write programmatic TRAINING files minititan_prog_*.jsonl into this directory")
     a = ap.parse_args()
+    if a.v2:
+        # E16: fresh held-out set v2 (colliding, k = 2 / 4 / 8). Becomes a DEVELOPMENT set once it has compared A2 and A3.
+        os.makedirs(a.out_dir, exist_ok=True)
+        g = Gen(8181, "heldout_v2")
+        recs = [g.colliding([2, 4, 8][i % 3]) for i in range(300)]
+        old = {s for P in ("train", "heldout") for s in POOLS[P]["devices"] + POOLS[P]["locs"]}
+        tmpl = [t.split("{")[0] for P in ("train", "heldout") for t in POOLS[P]["fact"] + Q_T[P]]
+        for rec in recs:
+            verify(rec)
+            sents = re.split(r"(?<=\.)\s+", rec["context"])
+            for v in [rec["answer"]] + rec["annot"]["distractor_values"]:
+                s = [x for x in sents if v in x][0]
+                assert not any(e in s for e in old), "a v2 fact sentence names a train / heldout entity"
+                assert not any(t and s.startswith(t) for t in tmpl if len(t) > 4), "a v2 fact sentence starts like an old template"
+        write_jsonl(os.path.join(a.out_dir, "eval_v2_colliding.jsonl"), recs)
+        print(f"eval_v2_colliding: {len(recs)} records (verified)")
+        return
     if a.para:
         os.makedirs(a.out_dir, exist_ok=True)
         for tag, pools, seed in (("seen", "train", 6060), ("heldout", "heldout", 6161)):

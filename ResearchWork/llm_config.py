@@ -50,6 +50,8 @@ class LLMConfig:
     abort_step: int = 0              # >0: at this step, stop if the Gemini long-context document-specific gain < abort_min_gain
     abort_min_gain: float = 1.0
     ablate_key_part: str = "none"    # EVAL-ONLY: none | local | context (zero that part of both composite keys)
+    force_gate: str = "none"         # EVAL-ONLY (E16): none | pos | sent | all — override the learned write gate
+    force_gate_value: float = 1.0
     ckpt_steps: str = ""             # extra memory checkpoints, e.g. "2000" (extension rule needs the 2000-step probe)
 
     # paired controls (the fair reference for the headline numbers)

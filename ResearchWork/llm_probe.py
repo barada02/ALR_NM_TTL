@@ -71,15 +71,29 @@ def probe_file(model, tok, cfg: LLMConfig, path: str, pad_id: int, device, bs: i
     for i0 in range(0, len(items), bs):
         chunk_items, chunk_exs = items[i0:i0 + bs], exs[i0:i0 + bs]
         b = to_dev(collate(chunk_items, cfg, pad_id), device)
-        cap = capture(model, b)
         n = b["ids"].shape[1] - 1
+        all_pos = []
+        for j, (it, ex) in enumerate(zip(chunk_items, chunk_exs)):
+            pos = []
+            for v in [ex["answer"]] + list(ex["annot"].get("distractor_values", [])):
+                ti = value_token_index(tok, ex["context"], it["ctx"], v)
+                pos.append(None if ti is None else n * S - len(it["ctx"]) + ti - 1)
+            all_pos.append(pos)
+        if cfg.force_gate in ("pos", "sent"):                            # E16: force the write gate at every fact's write position
+            fp = torch.zeros(b["ids"].shape[0], (n + 1) * S, device=device)
+            for j, pos in enumerate(all_pos):
+                for p in pos:
+                    if p is not None and p >= 0:
+                        fp[j, p] = 1
+            model.memory.force_pos = fp
+        try:
+            cap = capture(model, b)
+        finally:
+            model.memory.force_pos = None
         for j, (it, ex) in enumerate(zip(chunk_items, chunk_exs)):
             a = ex["annot"]
             cands = [ex["answer"]] + list(a.get("distractor_values", []))
-            pos = []
-            for v in cands:
-                ti = value_token_index(tok, ex["context"], it["ctx"], v)
-                pos.append(None if ti is None else n * S - len(it["ctx"]) + ti - 1)
+            pos = all_pos[j]
             if any(p is None or p < 0 for p in pos):
                 continue
             q = n * S + int(b["prompt_len"][j]) - 1

@@ -425,6 +425,28 @@ clause-level pooled key (e.g. write at the end of the sentence). An auxiliary ke
 **Caveat that limits the claim:** the entity-vs-entity success is substantially LEXICAL — the question repeats the entity's name ("flow meter at Ridge 4"), which is why it transfers to unseen names (raw cosine already 0.71).
 Paraphrased or pronoun references are not tested here and are the obvious next stress test for entity-pooled keys.
 
+## Pre-registration — E16: is the write gate causal? + A2 vs A3 on a fresh held-out set (written BEFORE running; do not edit after results arrive)
+Agreed with the reviewer after E15: probes before data. No data generation and no retraining until E16 is read. The E15 gates are not touched or reframed;
+output ranking (0.49) and P1 (0.51) do NOT rescue E15. Reviewer note for the NEXT gate set: make output ranking co-primary (the read metric may understate end-task binding).
+**E16a — forced write gate (eval-only, no training; A3 confirmation checkpoints, seeds 0 / 1 / 2; `eval_seen_colliding` + `eval_heldout_colliding`).**
+`force_gate` replaces the learned write gate (sentence-close selection still applies) — variants:
+`match` = gate 0.71 (the seen-template level) at the write positions of ALL k facts of the document (primary); `sent` = gate 1.0 on every token of the fact sentences
+(oracle write mask); `all` = gate 1.0 on every writable token (clamp; expected to flood the memory — reported only).
+Decision (primary = `match`, held-out read, pooled over seeds, n = 900; E15 unforced 0.33):
+  ≥ 0.50 → the gate is causally sufficient; template diversification is aimed at the right component.
+  0.40 – 0.50 → partial cause; gate and thin key margins both contribute; diversify AND run the context-only arm.
+  < 0.40 → the gate is NOT the bottleneck; thin margins / superposition dominate; diversifying templates alone would treat the wrong term — rethink before any data spend.
+Control: seen read under `match` must stay within 0.05 of 0.78, otherwise the intervention itself is disruptive and the held-out reading is qualified. Storage under forcing reported.
+**E16b — fresh held-out set v2 (exploratory).** `eval_v2_colliding` (300, k = 2 / 4 / 8; `programmatic_eval.py --v2`, seed 8181): device types, locations, fact AND question templates
+disjoint from both train and the burned v1 held-out; frames include value-before-entity ("The figure V has been logged as the A belonging to the E"), passive and "assigned … at handover".
+Design limitation found while building it (stated, not probed): a value that STARTS a sentence is never written (its first value token's shift_v pair crosses the masked sentence boundary),
+so no v2 template starts with the value. Evaluated: A2 and A3 screen checkpoints (`v5_A2_s0`, `v5_A3_s0`, both 3000 steps, seed 0 — length-matched) and the three A3 confirmation seeds;
+probe READ + output likelihood ranking. Reading: A2 − A3 (screen) ≥ 0.10 on v2 read with non-overlapping Wilson intervals → the auxiliary key loss is implicated in the memorisation;
+otherwise it is not. **Once used here, v2 is a DEVELOPMENT set**; any retrained arm is confirmed on a v3 nobody has looked at (a different generator family).
+**After E16 (plan, not yet registered):** retrain with diversified templates (dozens of programmatic frames; Fireworks paraphrase as a second source) — A3 rerun + A4 context-only key
+(the E15 ablation indicted the local part); seen-set selection; v3 confirmation with the same gates. If that also fails held-out, stop iterating on the architecture and write the
+failure-anatomy paper (storage works → addressing failed → keys fixed on seen templates → write gate overfits templates → key margins collapse on unseen entities).
+
 ### E15 confirmation — A3, 6000 steps, seeds 0 / 1 / 2 (done; judged by the gates registered above, nothing re-tuned)
 Runs `v5c_A3_s{0,1,2}` (commit bbfe0e3); all passed the step-1000 abort check (gain 2.76 / 3.02 / 2.39). Held-out evaluated only after all three finished. Probes `results/llm_probe/v5c_A3_s*__{confirm,abl_local,abl_context}.json`,
 output ranking `results/llm_eval/v5c_A3_s*__confirm.json`. Values: per seed s0 / s1 / s2, then pooled over seeds (n = 900) with Wilson 95 %.

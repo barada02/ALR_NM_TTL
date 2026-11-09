@@ -71,6 +71,9 @@ class MemoryConfig:
     sentence_close_writes: bool = True   # False is ONLY for the W_c = 0 key-path unit test (it would leak future tokens otherwise)
     key_loss_tau: float = 0.1        # temperature of the optional auxiliary key loss
     ablate_key_part: str = "none"    # EVAL-ONLY diagnostic: "local" or "context" zeroes that part of BOTH keys
+    force_gate: str = "none"         # EVAL-ONLY (E16): override the write gate — "pos": at memory.force_pos positions;
+                                     # "sent": every token of a sentence containing a force_pos position; "all": every writable token
+    force_gate_value: float = 1.0    # the gate value used where forced (the write mask / sentence-close selection still applies)
     # Mode A
     aux_lag_chunks: int = 4          # delayed aux reads the oldest of the last N chunks; 0 disables
     head_init: float = 0.03          # target std of a single token's U/V entries at init
@@ -451,8 +454,9 @@ class MiniTitanMemoryModule(nn.Module):
         ra = allow & om.unsqueeze(1)
         return torch.where(ra.any(-1, keepdim=True), ra, allow)
 
-    def _chunk_B2(self, hw, k_r, k_w, v_w, m_w, rho, h_mean, update_memory):
-        """Mode B with TWO keys: the output read uses k_r; the inner loss / ΔW update uses the write pairs (k_w → v_w)."""
+    def _chunk_B2(self, hw, k_r, k_w, v_w, m_w, rho, h_mean, update_memory, force=None):
+        """Mode B with TWO keys: the output read uses k_r; the inner loss / ΔW update uses the write pairs (k_w → v_w).
+        force (B,L,1) bool, eval-only: where True the learned write gate is replaced by cfg.force_gate_value."""
         outer_grad = torch.is_grad_enabled() and self.training
         create = outer_grad and self.cfg.second_order
         with torch.enable_grad():
@@ -460,7 +464,10 @@ class MiniTitanMemoryModule(nn.Module):
             read = self.memory(k_r, leaves)
             read_w = self.memory(k_w, leaves)
             mse = (read_w - v_w).pow(2).mean(-1)
-            gate = self.surprise_gate(hw, mse) * m_w
+            gate = self.surprise_gate(hw, mse)
+            if force is not None:
+                gate = torch.where(force, torch.full_like(gate, self.cfg.force_gate_value), gate)
+            gate = gate * m_w
             if update_memory:
                 inner = (gate.squeeze(-1) * self.cfg.inner_lr * mse).sum()
                 grads = torch.autograd.grad(inner, leaves, create_graph=create, retain_graph=True)
@@ -510,6 +517,20 @@ class MiniTitanMemoryModule(nn.Module):
         write_chunk = (close_at // C) if cfg.sentence_close_writes else (pos // C)
         om = None if (pool_mask is None or cfg.pool != "oracle") else (pool_mask.to(dev) > 0)
 
+        force_all = None                                                              # eval-only gate override (E16)
+        if cfg.force_gate == "all":
+            force_all = w_ok.clone()
+        elif cfg.force_gate in ("pos", "sent"):
+            fp = getattr(self, "force_pos", None)
+            assert fp is not None and fp.shape == (B, T), "force_gate pos/sent needs memory.force_pos of shape (B, T)"
+            fp = fp.to(dev) > 0
+            if cfg.force_gate == "sent":
+                hit = torch.zeros(B, nS, dtype=torch.long, device=dev).scatter_reduce(1, sid, fp.long(), "amax")
+                fp = (hit.gather(1, sid) > 0) & valid
+            force_all = fp
+        elif cfg.force_gate != "none":
+            raise ValueError(f"unknown force_gate {cfg.force_gate!r}")
+
         logits = self._pool_logits(hn)
         l_all = self.kv.W_k(hn)                                                       # local part (v4's key before RMSNorm)
         hn_next = torch.cat([hn[:, 1:], hn[:, -1:]], 1)
@@ -557,8 +578,9 @@ class MiniTitanMemoryModule(nn.Module):
             m_w = wsel.to(hn.dtype).unsqueeze(-1)
             h_mean = hn[:, s0:e0].mean(dim=1)
             rho = self.retention_gate(h_mean)
-            read, mse_w, gate_w, new_delta, new_mom = self._chunk_B2(hb, k_r, k_w, v_all[:, lo:e0], m_w,
-                                                                     rho, h_mean, update_memory)
+            read, mse_w, gate_w, new_delta, new_mom = self._chunk_B2(
+                hb, k_r, k_w, v_all[:, lo:e0], m_w, rho, h_mean, update_memory,
+                force=None if force_all is None else force_all[:, lo:e0].unsqueeze(-1))
             blend = self.blend_gate(hn[:, s0:e0], read)
             outs.append(hidden[:, s0:e0] + blend * self.W_o(read))
             if update_memory:
@@ -883,6 +905,42 @@ def _run_checks():
     sids4, share4 = sentence_ids_from_closes(close, cap=64)
     print(f"10f. v5 segmentation: max sentence {int(lens.max())} tokens (cap 64); forced-close share {share:.2f} (no-punctuation run), "
           f"{share4:.2f} (normal text)   OK")
+    # 10g. eval-only write-gate override (E16): empty force mask == no override; forced positions carry the forced value,
+    #      unforced ones keep the learned gate; "sent" forces whole sentences; "all" at value 0 freezes the state
+    comp4 = mk("B", shift_v=True, input_norm=True, key_mode="composite", pool="attn")
+    nn.init.normal_(comp4.W_o.weight, std=0.1); nn.init.normal_(comp4.W_c.weight, std=0.1)
+    comp4.eval()
+
+    def run_cap(m, **over):
+        for k_, v_ in over.items():
+            setattr(m.cfg, k_, v_)
+        m.capture = {}; m.reset_memory()
+        o_, _, _ = m(h0, sent_ids=sids)
+        c_ = m.capture; m.capture = None
+        for k_ in over:
+            setattr(m.cfg, k_, MemoryConfig.__dataclass_fields__[k_].default)
+        return o_, c_
+    o_ref, c_ref = run_cap(comp4)
+    comp4.force_pos = torch.zeros(B, Tc)
+    o_empty, _ = run_cap(comp4, force_gate="pos")
+    assert torch.allclose(o_ref, o_empty, atol=1e-6), "an empty force mask changed the output"
+    wpos = c_ref["writable"].nonzero()[:3]
+    for bi_, ti_ in wpos.tolist():
+        comp4.force_pos[bi_, ti_] = 1
+    _, c_pos = run_cap(comp4, force_gate="pos", force_gate_value=0.71)
+    fmask = comp4.force_pos > 0
+    assert torch.allclose(c_pos["gate"][..., 0][fmask], torch.full((len(wpos),), 0.71), atol=1e-6), "forced positions lack the forced value"
+    _, c_sent = run_cap(comp4, force_gate="sent", force_gate_value=1.0)
+    hit_s = torch.zeros_like(fmask)
+    for bi_, ti_ in wpos.tolist():
+        hit_s[bi_] |= (sids[bi_] == sids[bi_, ti_])
+    want = hit_s & (c_ref["writable"] > 0)
+    assert torch.allclose(c_sent["gate"][..., 0][want], torch.ones(int(want.sum())), atol=1e-6), "a token of a forced sentence is not forced"
+    comp4.force_pos = None
+    o_frz, c_frz = run_cap(comp4, force_gate="all", force_gate_value=0.0)
+    assert float(c_frz["gate"].abs().sum()) == 0.0 and not torch.allclose(o_frz, o_ref, atol=1e-5)
+    print(f"10g. v5 write-gate override: empty mask == none; {len(wpos)} forced positions at 0.71; sentence forcing covers "
+          f"{int(want.sum())} tokens; all@0 writes nothing   OK")
 
     # 7. Mode B one-shot write: re-reading identical keys after a write lowers surprise
     mod = mk("B")
