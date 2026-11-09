@@ -425,6 +425,22 @@ clause-level pooled key (e.g. write at the end of the sentence). An auxiliary ke
 **Caveat that limits the claim:** the entity-vs-entity success is substantially LEXICAL — the question repeats the entity's name ("flow meter at Ridge 4"), which is why it transfers to unseen names (raw cosine already 0.71).
 Paraphrased or pronoun references are not tested here and are the obvious next stress test for entity-pooled keys.
 
+### E15 lock + confirmation protocol (written BEFORE the confirmation runs and BEFORE any held-out evaluation; do not edit after results arrive)
+**Locked arm: A3** (attention pool + auxiliary key loss), by the pre-registered selection rule on SEEN data only: 0.78 [0.73, 0.82] vs A2 0.63 [0.58, 0.69], non-overlapping intervals; at 7 colliders 0.63 vs 0.43 (chance 0.12).
+The claim must say "with an auxiliary key-alignment loss (training-time annotations only, none at inference)".
+**Amendments recorded before held-out was touched:** (1) arm D is renamed "gold span + mean pooling" — it is not an oracle ceiling; decision rules (c) and (d) are void as written (their premise was that D bounds
+the pooled arms; seen data falsified it). Consequence: rule (d)'s protection against a broken downstream is gone; it costs nothing because the pooled arms did not fail. (2) The Gemini 1.17 at screen is a warning,
+not a verdict; the mixture and the gate are NOT changed before confirmation. If binding passes and Gemini fails, rule (e) fires and the result is "binding at a small recall cost, fixable by rebalancing".
+**Confirmation protocol.** A3, 6000 steps (the extension rule fires: A3 rose 0.76 → 0.78 and is above chance), three seeds 0 / 1 / 2, identical config and mixture, same warm start (model v1), abort rule at
+step 1000 unchanged. *Deviation from the reviewer's wording, for identical configs:* seed 0 is re-run FRESH to 6000 instead of "extended" from the 3000-step screen, because the screen saved only the memory
+weights — not the optimizer state or the learning-rate schedule — so an extension would differ from seeds 1-2 in schedule and optimizer history. The screen's seed-0 run stays as a screening result only.
+**Held-out stays untouched until all three seeds finish.** Then, exactly as registered: held-out colliding READ ≥ 0.50 with Wilson lower bound > 0.29, seen ≥ 0.60, Gemini long-context ≤ 1.15 (means of 3 seeds);
+secondaries: output-level likelihood ranking held-out ≥ 0.45, P1 held-out read ≥ 0.45, P2 Wilson lower bound above chance. P1 / P2 sets are generated BEFORE any held-out evaluation, from the definitions in
+DESIGN_ENTITY_KEYS.md §8.
+**If held-out fails (rule b):** A2 does NOT inherit this held-out set — once it has judged A3 it is a selection set; A2 would be exploratory and need fresh held-out entities / templates.
+**Added to the confirmation report:** relative contribution of the local vs context part of the composite key — mean norms of ℓ and W_c·c during training, and eval-only ablations (local part zeroed / context part zeroed)
+of the read ranking. If the local part is vestigial, the design doc's "composite" description must be simplified to "context key with a vestigial local term".
+
 ### E15 screen — v5 arms, 1 seed each (seen set only; the held-out set has NOT been evaluated)
 All five arms warm-started cleanly (R: no new parameters; A1 / D: W_c; A2 / A3: W_c + attention pool) and passed the abort check at step 1000. Probes on `eval_seen_colliding` (n = 300, chance 0.29) at steps 2000 and 3000;
 the held-out set is untouched until an arm is locked (reviewer guardrail).
