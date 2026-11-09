@@ -90,8 +90,9 @@ def eval_llm(run: str, files: list, gen_n: int = 100, max_new: int = 24, limit: 
 
 @app.function(image=image, gpu=GPU, cpu=4.0, memory=32768, timeout=2 * 60 * 60,
               volumes={"/data": data_vol, "/cache": cache_vol, "/vol": res_vol})
-def probe_llm(run: str, files: list, tag: str = "probe", sha: str = "") -> dict:
-    """Localisation probes (storage / addressing / read) on a trained checkpoint. Eval-only."""
+def probe_llm(run: str, files: list, tag: str = "probe", sha: str = "", ckpt: str = "") -> dict:
+    """Localisation probes (storage / addressing / read) on a trained checkpoint. Eval-only.
+    ckpt: checkpoint suffix, e.g. "_step2000" for the intermediate checkpoint (default: the final one)."""
     sys.path.insert(0, REMOTE_SRC)
     from llm_config import LLMConfig
     from llm_probe import run_probe
@@ -99,7 +100,8 @@ def probe_llm(run: str, files: list, tag: str = "probe", sha: str = "") -> dict:
     saved = json.load(open(f"/vol/llm/{run}/result.json"))
     cfg = LLMConfig(**saved["config"])
     cfg.max_ctx_segments = 64
-    res = run_probe(cfg, f"/vol/llm/{run}/{run}_memory.pt", [f"/data/miniTitan_eval/{f}.jsonl" for f in files], sha=sha)
+    res = run_probe(cfg, f"/vol/llm/{run}/{run}_memory{ckpt}.pt", [f"/data/miniTitan_eval/{f}.jsonl" for f in files], sha=sha)
+    res["ckpt_suffix"] = ckpt
     res["run"], res["tag"] = run, tag
     os.makedirs("/vol/llm_probe", exist_ok=True)
     with open(f"/vol/llm_probe/{run}__{tag}.json", "w") as f:
@@ -142,11 +144,11 @@ def _git_sha() -> str:
 
 
 @app.local_entrypoint()
-def probe_main(run: str, files: str = "eval_seen_colliding,eval_heldout_colliding", tag: str = "probe"):
+def probe_main(run: str, files: str = "eval_seen_colliding,eval_heldout_colliding", tag: str = "probe", ckpt: str = ""):
     sys.path.insert(0, HERE)
     from llm_probe import summarize_probe
 
-    res = probe_llm.remote(run, files.split(","), tag, _git_sha())
+    res = probe_llm.remote(run, files.split(","), tag, _git_sha(), ckpt)
     out_dir = os.path.join(ROOT, "results", "llm_probe")
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f"{run}__{tag}.json")

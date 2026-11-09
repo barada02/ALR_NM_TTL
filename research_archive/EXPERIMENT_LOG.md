@@ -26,7 +26,8 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
 - **Redesign target (E14, pre-registered linear key probe): pooled ENTITY keys.** No linear map recovers the asked entity from the positions the memory uses today (question answer-token vs the token before the value:
   held-out 0.33, below the 0.35 "not present" line; the write position fails at every layer). Pooling over the entity tokens on both sides works at the SAME layer 12 on held-out entities and templates: 0.82 (one shared map:
   0.99; raw cosine 0.71). So the fix is key construction — key the write by the fact's entity mention, read with the question's entity / span — not more data, not a different layer.
-- **v5 implemented, sanity-checked, NOT yet trained:** composite keys in `memory_module_v4.py` (`key_mode=composite`), segmentation + oracle masks + key loss in `llm_model.py` / `llm_data.py`; checks 10a-10f pass on Modal; GPU smoke (`v5_smoke`) passes (warm start, W_c grows from 0, key loss, abort check, capped share 0-0.14 after excluding padding). Screening set: `launch.py llm v5_screen`.
+- **E15 screen done (seen set only; held-out untouched; selection NOT yet locked):** attention-pooled composite keys bind on the seen set — A3 (attention + key loss) 0.78, A2 (attention) 0.63, vs mean pooling A1 0.34, gold-span mean D 0.38, old token keys R 0.30 (chance 0.29). Gemini gate at risk (A2 1.20, A3 1.17 vs ≤ 1.15). Awaiting the reviewer's lock.
+- **v5 implemented, sanity-checked:** composite keys in `memory_module_v4.py` (`key_mode=composite`), segmentation + oracle masks + key loss in `llm_model.py` / `llm_data.py`; checks 10a-10f pass on Modal; GPU smoke (`v5_smoke`) passes (warm start, W_c grows from 0, key loss, abort check, capped share 0-0.14 after excluding padding). Screening set: `launch.py llm v5_screen`.
 - **Design:** `research_archive/DESIGN_ENTITY_KEYS.md` — composite keys (local token + sentence-pooled context, one shared projection), sentence-close writes, no gold spans at inference, oracle-span diagnostic arm, paraphrase/pronoun gate, thresholds set against the E13 storage ceiling.
 - **Goal (decided):** a workshop-style *mechanism* paper (not a deployable context-extension method). External review (2 independent engineers) ranked the open risks — see "Open items".
 - **Interference (E8):** overwrite works but ~75-94% of its errors are STALE values, caused by lost write order inside a chunk (smaller chunks fix it). At matched state size the 2-layer
@@ -87,6 +88,7 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
 | E7a | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | **mid** insertion + window 8 best. But **swap control: 95–99% of the gain is a generic adapter** (no recall) | Gate 2b not passed; diagnose |
 | E9 | LLM paired controls: document-free adapter + adapter-matched oracle (`paired_ctl`) | Fair ceiling is far lower than the old oracle (long-context 0.06 vs 0.62). Memory beats the doc-free adapter by +0.96 / +0.26 / +0.48 NLL; closes 48% / 23% / 33% of the fair gap | Report ON vs doc-free adapter and the fair gap; drop the old "% of oracle gap" |
+| E15s | v5 screen: 5 arms, 1 seed, 3000 steps, warm start; probes on the SEEN set only | Attention pooling binds (A2 0.63, A3 0.78 seen read); mean pooling (A1) and gold-span MEAN (D) do not; old keys (R) at chance. Gemini long-context 1.12-1.20 | Lock pending (seen data only) |
 | E14 | Supervised linear key probe (pre-registered): frozen model, layers 0/6/12/18/23, question answer/entity/span vs fact write/entity, held-out entities + templates | Current positions (answer vs write) not linearly present (0.33); pooled entity keys work at layer 12 (0.82; shared map 0.99); answer position only matches fact entities at later layers (0.45 / 0.55) | Rule (2): key construction — pooled entity keys |
 | E13 | Localisation probes (pre-registered): storage / key / hidden / read top-1 on colliding facts + overwrite cue probe, 6 models | Storage above chance in every healthy model; key, hidden and read at chance → rule (A): addressing failure, entity relation not in the frozen single-position representation as a dominant direction. Overwrite = recency (cue-free 0.83), not a cue leak | Key construction is the fix; data is not |
 | E12 | Stage 2 (pre-registered): train on colliding / overwrite / single programmatic data, 50/25/15/10 mixture, 3 seeds + dose + control arms | Binding not learned (colliding ranking seen 0.31, held-out 0.34 vs chance 0.33); 2/3 seeds lost document recall (generic adapter); the one healthy seed gets overwrite 0.94 (a surface cue, not binding); single-fact control 1.36 NLL, colliding 0.38 | Criteria 1+2 FAIL; confounded by recall collapse → fine-tune from model v1, probe the overwrite cue |
@@ -422,6 +424,29 @@ projection. Constraint found in the templates: in `"The register lists {v} as th
 clause-level pooled key (e.g. write at the end of the sentence). An auxiliary key loss from the programmatic annotations can pull the question key to the right fact's key.
 **Caveat that limits the claim:** the entity-vs-entity success is substantially LEXICAL — the question repeats the entity's name ("flow meter at Ridge 4"), which is why it transfers to unseen names (raw cosine already 0.71).
 Paraphrased or pronoun references are not tested here and are the obvious next stress test for entity-pooled keys.
+
+### E15 screen — v5 arms, 1 seed each (seen set only; the held-out set has NOT been evaluated)
+All five arms warm-started cleanly (R: no new parameters; A1 / D: W_c; A2 / A3: W_c + attention pool) and passed the abort check at step 1000. Probes on `eval_seen_colliding` (n = 300, chance 0.29) at steps 2000 and 3000;
+the held-out set is untouched until an arm is locked (reviewer guardrail).
+```
+arm                        abort@1000      |W_c| 2000 / 3000   seen READ 2000 → 3000 [Wilson, 3000]    storage / key @3000    Gemini long-context NLL (doc-specific gain)
+A1 mean pool               ok (2.81)        5.62 / 5.69         0.34 → 0.34  [0.29, 0.40]               0.65 / 0.29            1.16 (+2.70)
+A2 attention pool          ok (2.86)        6.79 / 6.95         0.53 → 0.63  [0.58, 0.69]               0.77 / 0.99            1.20 (+2.79)
+A3 attention + key loss    ok (2.76)        7.23 / 7.31         0.76 → 0.78  [0.73, 0.82]               0.84 / 1.00            1.17 (+2.77)
+D gold spans (mean)        ok (2.66)        6.35 / 6.57         0.36 → 0.38  [0.32, 0.43]               0.65 / 0.67            1.19 (+2.75)
+R token keys               ok (2.43)        —                   0.31 → 0.30  [0.25, 0.36]               0.52 / 0.28            1.12 (+2.91)
+seen READ by #colliders @3000 (chance 0.50 / 0.25 / 0.12): A2 0.84 / 0.63 / 0.43 · A3 0.91 / 0.79 / 0.63 · A1 0.53 / 0.28 / 0.21 · D 0.64 / 0.29 / 0.20 · R 0.49 / 0.28 / 0.14
+model v1 on the same set (E13): read 0.32, storage 0.50, key 0.31
+```
+Reading (seen data only, one seed — "which arms are alive", not "which arm won"):
+1. **Attention-pooled composite keys bind; nothing else does.** A2 and A3 are far above chance and rising; A1 (mean over the sentence) and R (old keys, same warm start and mixture) stay at chance → the regime alone
+   does not produce binding, the new keys do, and the WEIGHTING inside the pool is the load-bearing part.
+2. **Arm D did not behave as an upper bound — a premise of decision rules (c) / (d) is falsified, stated here rather than silently applied.** D pools gold entity spans with UNIFORM weights; it reaches key 0.67
+   but read 0.38, below the attention arms. So D is "gold span + mean pooling", not an oracle ceiling; the comparison A1 ≈ D ≪ A2 says span selection matters less than learned weighting. Rule (d) ("D fails → downstream
+   of the key is broken") does not apply, because A2 / A3 show the downstream works.
+3. **Seen key 0.99 / 1.00 is a warning, not a win.** E14 showed seen-pool addressing can be memorised entity directions (0.69 seen vs 0.33 held-out). Only the held-out test can tell binding from memorisation.
+4. **Gemini gate at risk:** A2 1.20 and A3 1.17 vs the ≤ 1.15 gate (R, same mixture without new keys: 1.12; model v1: 1.10). One seed (seed noise ≈ 0.01-0.03) — judged at confirmation, but rule (e) may apply.
+5. Extension rule (reported only, nothing extended): A2 and A3 are above chance and rising (A2 0.53 → 0.63, A3 0.76 → 0.78); A1, D, R are not.
 
 ## Pre-registration — entity-keyed memory (E15), written BEFORE implementation and training; do not edit after results arrive
 Design: `research_archive/DESIGN_ENTITY_KEYS.md` (approved by the reviewer with three corrections, applied). Composite keys: a local token part (model v1's W_k) plus a
