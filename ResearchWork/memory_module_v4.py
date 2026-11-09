@@ -70,6 +70,7 @@ class MemoryConfig:
     mask_cross_pair: bool = True     # do not write the pair (last token of a sentence -> first token of the next sentence)
     sentence_close_writes: bool = True   # False is ONLY for the W_c = 0 key-path unit test (it would leak future tokens otherwise)
     key_loss_tau: float = 0.1        # temperature of the optional auxiliary key loss
+    ablate_key_part: str = "none"    # EVAL-ONLY diagnostic: "local" or "context" zeroes that part of BOTH keys
     # Mode A
     aux_lag_chunks: int = 4          # delayed aux reads the oldest of the last N chunks; 0 disables
     head_init: float = 0.03          # target std of a single token's U/V entries at init
@@ -518,7 +519,7 @@ class MiniTitanMemoryModule(nn.Module):
         cap = getattr(self, "capture", None)
         need_full = cap is not None or keyloss is not None
         outs, kr_list, kw_rows = [], [], []
-        stats = {"surprise": [], "write_gate": [], "retention": [], "blend": []}
+        stats = {"surprise": [], "write_gate": [], "retention": [], "blend": [], "key_local_norm": [], "key_ctx_norm": []}
         cap_lists = {n_: [] for n_ in ("h", "k", "v", "read", "blend")} if cap is not None else None
         written = torch.zeros(B, T, device=dev) if cap is not None else None
         gate_full = torch.zeros(B, T, 1, device=dev) if cap is not None else None
@@ -534,12 +535,22 @@ class MiniTitanMemoryModule(nn.Module):
             pr = torch.arange(s0, e0, device=dev)
             allow_r = (jpos.view(1, 1, L) >= read_lo[:, s0:e0].unsqueeze(-1)) & (jpos.view(1, 1, L) <= pr.view(1, -1, 1)) & vb.unsqueeze(1)
             c_r = rms_norm(self._masked_pool(lb, hb, self._restrict(allow_r, om_b)))
-            k_r = rms_norm(l_all[:, s0:e0] + self.W_c(c_r))
+            lp_r, cp_r = l_all[:, s0:e0], self.W_c(c_r)
+            if cfg.ablate_key_part == "local":
+                lp_r = lp_r * 0
+            elif cfg.ablate_key_part == "context":
+                cp_r = cp_r * 0
+            k_r = rms_norm(lp_r + cp_r)
             # write keys: whole-sentence pool, for the tokens whose sentence closes in this chunk
             allow_w = (jpos.view(1, 1, L) >= tok_start[:, lo:e0].unsqueeze(-1)) & (jpos.view(1, 1, L) <= tok_end[:, lo:e0].unsqueeze(-1)) \
                 & vb.unsqueeze(1)
             c_w = rms_norm(self._masked_pool(lb, hb, self._restrict(allow_w, om_b)))
-            k_w = rms_norm(l_all[:, lo:e0] + self.W_c(c_w))
+            lp_w, cp_w = l_all[:, lo:e0], self.W_c(c_w)
+            if cfg.ablate_key_part == "local":
+                lp_w = lp_w * 0
+            elif cfg.ablate_key_part == "context":
+                cp_w = cp_w * 0
+            k_w = rms_norm(lp_w + cp_w)
             wsel = (write_chunk[:, lo:e0] == ci) & w_ok[:, lo:e0]
             if not cfg.sentence_close_writes:
                 wsel = wsel & (jpos.view(1, L) >= s0)
@@ -561,6 +572,8 @@ class MiniTitanMemoryModule(nn.Module):
             stats["write_gate"].append((gate_w.detach()).sum() / nw)
             stats["retention"].append(rho.detach().mean())
             stats["blend"].append(blend.detach().mean())
+            stats["key_local_norm"].append(lp_r.detach().norm(dim=-1).mean())     # pre-RMSNorm size of each key part (read keys)
+            stats["key_ctx_norm"].append(cp_r.detach().norm(dim=-1).mean())
             if need_full:
                 kr_list.append(k_r)
                 bi, ti = torch.nonzero(wsel, as_tuple=True)
@@ -603,6 +616,8 @@ class MiniTitanMemoryModule(nn.Module):
             "retention_halflife_tokens": cfg.chunk_size * math.log(0.5) / math.log(max(min(med_ret, 1 - 1e-6), 1e-6)),
             "state_norm_ratio": self.state_norm_ratio(),
             "W_c_norm": float(self.W_c.weight.detach().norm()),
+            "key_local_norm": sum(per_chunk["key_local_norm"]) / len(per_chunk["key_local_norm"]),
+            "key_ctx_norm": sum(per_chunk["key_ctx_norm"]) / len(per_chunk["key_ctx_norm"]),
             "per_chunk": per_chunk,
         }
         return out, metrics, aux

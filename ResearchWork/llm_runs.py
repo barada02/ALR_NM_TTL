@@ -140,6 +140,12 @@ def v5_screen() -> List[LLMConfig]:
             _v5_base(run_name="v5_R_s0", key_mode="token")]
 
 
+def v5_confirm() -> List[LLMConfig]:
+    """E15 confirmation of the LOCKED arm A3: 6000 steps, seeds 0 / 1 / 2, identical configs (seed 0 re-run fresh)."""
+    return [_v5_base(run_name=f"v5c_A3_s{s}", seed=s, key_mode="composite", pool="attn", key_loss_weight=0.1,
+                     steps=6000, eval_every=2000, ckpt_steps="3000") for s in (0, 1, 2)]
+
+
 def v5_smoke() -> List[LLMConfig]:
     """Plumbing only: a few steps of each composite variant (incl. oracle masks and the key loss) and the token reference."""
     tiny = dict(steps=12, log_every=2, eval_every=10 ** 9, val_per_type=6, gen_eval_per_type=3, batch_size=2, gen_max_new=8,
@@ -162,7 +168,7 @@ def fix_b() -> List[LLMConfig]:
 
 RUNS = {"smoke": smoke, "gate2a": gate2a, "full_a": full_a, "fix_smoke": fix_smoke, "fix_a": fix_a, "fix_b": fix_b,
         "fix_c": fix_c, "final_b": final_b, "paired_ctl": paired_ctl, "fix_d": fix_d, "stage2": stage2,
-        "v5_screen": v5_screen, "v5_smoke": v5_smoke}
+        "v5_screen": v5_screen, "v5_smoke": v5_smoke, "v5_confirm": v5_confirm}
 
 
 def build_runs(name: str) -> List[LLMConfig]:

@@ -49,6 +49,7 @@ class LLMConfig:
     init_ckpt: str = ""              # warm start: memory state_dict to load (new parameters stay zero-initialised)
     abort_step: int = 0              # >0: at this step, stop if the Gemini long-context document-specific gain < abort_min_gain
     abort_min_gain: float = 1.0
+    ablate_key_part: str = "none"    # EVAL-ONLY: none | local | context (zero that part of both composite keys)
     ckpt_steps: str = ""             # extra memory checkpoints, e.g. "2000" (extension rule needs the 2000-step probe)
 
     # paired controls (the fair reference for the headline numbers)

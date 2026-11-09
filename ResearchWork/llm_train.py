@@ -295,7 +295,8 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
         sched.step()
         run_loss.append(loss.item())
         run_met = {k: model.last_met[k] for k in ("mean_write_gate", "retention_halflife_tokens", "state_norm_ratio",
-                                                  "mean_blend", "mean_surprise", "W_c_norm") if k in model.last_met}
+                                                  "mean_blend", "mean_surprise", "W_c_norm", "key_local_norm",
+                                                  "key_ctx_norm") if k in model.last_met}
         if cfg.key_mode == "composite":
             run_met["capped_sentence_share"] = model.last_seg_share
             if cfg.key_loss_weight > 0 and model.last_aux is not None:
