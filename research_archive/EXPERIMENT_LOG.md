@@ -422,6 +422,28 @@ clause-level pooled key (e.g. write at the end of the sentence). An auxiliary ke
 **Caveat that limits the claim:** the entity-vs-entity success is substantially LEXICAL — the question repeats the entity's name ("flow meter at Ridge 4"), which is why it transfers to unseen names (raw cosine already 0.71).
 Paraphrased or pronoun references are not tested here and are the obvious next stress test for entity-pooled keys.
 
+## Pre-registration — entity-keyed memory (E15), written BEFORE implementation and training; do not edit after results arrive
+Design: `research_archive/DESIGN_ENTITY_KEYS.md` (approved by the reviewer with three corrections, applied). Composite keys: a local token part (model v1's W_k) plus a
+sentence-pooled context part (W_c, zero-initialised, shared). TWO keys per position: k^write (whole-sentence pool) feeds ONLY the inner loss / ΔW update; k^read (pool over
+previous + current sentence, tokens ≤ p only, 64 tokens total) feeds ONLY the output read. Sentence-close writes (in the chunk of the boundary-confirming lookahead token); the
+cross-sentence pair is masked. No gold entity spans at inference.
+**Arms** (all warm-started from model v1 = Stage B seed 0, new parameters zero-initialised; Stage 2 mixture 50 / 25 / 15 / 10; 3000 steps, lr 3e-4; full BPTT; chunk 32):
+A1 mean pool · A2 attention pool (primary candidate) · A3 attention pool + auxiliary key loss · D gold entity spans (programmatic documents only; its metrics are computed on the
+programmatic sets only) · R current token keys, same warm start and mixture (separates regime from keys). Screening = 1 seed per arm; arm selection on the SEEN set only.
+**Extension rule:** if the selected arm at 3000 steps is above chance on seen read ranking AND that ranking rose between the 2000- and 3000-step probes, extend it to 6000 steps
+before any gate is declared failed. Confirmation = 3 seeds of the selected arm at the length the rule fixes.
+**Abort rule:** Gemini long-context document-specific gain (wrong-document NLL − right-document NLL) < 1.0 at step 1000 → recorded as recall collapse, run stopped.
+**Primary gates** (selected arm, mean of 3 seeds; read ranking = E13's READ metric with composite keys):
+1. held-out colliding read ranking ≥ 0.50 AND Wilson lower bound > 0.29 (chance); 2. seen colliding read ranking ≥ 0.60; 3. Gemini long-context NLL ≤ 1.15 (same 300-sample split).
+**Secondary gates:** output likelihood ranking (E12 metric) held-out ≥ 0.45 · P1 (reordered / partial mentions) held-out read ranking ≥ 0.45 · P2 (pronoun in the value sentence)
+Wilson lower bound above chance — if not, the claim is restricted to same-sentence (mention-level) binding.
+**Always reported:** storage / key / hidden metrics with Wilson intervals and per-k sample sizes, overwrite and haystack ranking, capped-sentence share, ‖W_c‖ over training.
+**Decision rules:** (a) primary gates pass → Fireworks paraphrase set, held-out generator family, RULER / BABILong in two tiers, then 1.5B. (b) seen passes, held-out fails →
+template / entity fitting; diversify first. (c) D passes on programmatic sets, pooled arms fail → improve pooling (then the 32-token window fallback). (d) D fails on programmatic
+sets → downstream of the key; stop building pooling. (e) Gemini gate fails → lower the programmatic share or the lr; binding reported but not as a free improvement.
+**Sanity checks that must pass on Modal before the first run:** causality (perturbing hidden > p or a boundary after p leaves outputs ≤ p unchanged, W_c ≠ 0); scoped key-path
+equivalence (W_c = 0, buffering disabled, cross mask off ≡ token-keyed Mode B); write-once; gradient to W_c at W_c = 0; oracle pool = masked pool; capped-sentence share reported.
+
 ## Pre-registration — supervised linear key probe (E14), written BEFORE running; do not edit after results arrive
 Agreed with the reviewer after E13: skip the fine-tune pilot (E13 already answers what it was for), leave the chunk-8 result uninterpreted, run this probe; close the DeltaNet lr question on the side (`gdn_lr_hi`: 3e-2, 1e-1).
 **Question.** Can a FIXED LINEAR MAP extract "which entity is being asked about" from the frozen model, for entities and templates never seen in probe training? (E13's hidden test was raw cosine only.)
