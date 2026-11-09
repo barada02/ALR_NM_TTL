@@ -425,6 +425,33 @@ clause-level pooled key (e.g. write at the end of the sentence). An auxiliary ke
 **Caveat that limits the claim:** the entity-vs-entity success is substantially LEXICAL — the question repeats the entity's name ("flow meter at Ridge 4"), which is why it transfers to unseen names (raw cosine already 0.71).
 Paraphrased or pronoun references are not tested here and are the obvious next stress test for entity-pooled keys.
 
+### E16 — forced write gate + fresh held-out v2 (done; judged by the E16 pre-registration below, nothing re-tuned)
+Probes `results/llm_probe/{run}__{force_match,force_sent,force_all,v2}.json`, output ranking `results/llm_eval/{run}__v2.json`. Pooled over the 3 A3 confirmation seeds (n = 900) unless named.
+```
+E16a (A3 confirmation, seeds 0/1/2)    seen: storage / key / read            held-out: storage / key / read        held-out gate@fact | storage margin | key margin
+unforced (E15)                         0.82 / 1.00 / 0.78                    0.52 / 0.89 / 0.33 [0.30,0.36]       0.19 | 0.04 | 0.10
+match  (gate 0.71 at fact positions)   0.84 / 1.00 / 0.80                    0.67 / 0.89 / 0.39 [0.35,0.42]       0.71 | 0.11 | 0.10
+sent   (gate 1 on fact sentences)      0.81 / 1.00 / 0.69                    0.61 / 0.89 / 0.34                   1.00 | 0.08 | 0.10
+all    (gate 1 everywhere)             0.77 / 1.00 / 0.63                    0.63 / 0.89 / 0.31                   1.00 | 0.09 | 0.10
+
+E16b eval_v2_colliding (chance 0.29; output-ranking chance 0.33; in-context oracle 0.64-0.66)
+run                         storage  key    read [Wilson]          read k=2 / 4 / 8     key margin   gate@fact   output ranking
+v5_A2_s0  (3000 steps)      0.54     0.42   0.28 [0.24, 0.34]      0.48 / 0.28 / 0.09   -0.06        0.33        0.36
+v5_A3_s0  (3000 steps)      0.53     0.55   0.32 [0.27, 0.37]      0.51 / 0.31 / 0.14    0.01        0.36        0.37
+v5c_A3 s0/s1/s2 (6000)      0.56     0.59   0.29 [0.26, 0.32]      0.47 / 0.28 / 0.11    0.03        0.35        0.38 / 0.39 / 0.41
+```
+**E16a verdict (pre-registered rule): `match` held-out read 0.386 < 0.40 → the write gate is NOT the bottleneck.** The control holds (seen 0.78 → 0.80, within 0.05).
+Stated plainly: the point estimate sits just under the 0.40 line and its interval [0.35, 0.42] straddles it; the rule is applied to the point estimate as registered.
+What forcing did: storage rose 0.52 → 0.67 (the gate does control how much of the value is written), but read moved only +0.06, because the read key's margin over the colliding facts stays
+0.10 (seen 0.58) — the read retrieves a blend. Writing more (sentence / everything) makes read WORSE (interference), on seen as well. So the weak gate on unseen templates is real but
+second-order; the first-order term is the thin key margin.
+**E16b (exploratory; v2 is now a DEVELOPMENT set):** on fully new templates everything is at chance — read 0.28-0.32, output ranking 0.36-0.41 vs chance 0.33. Unlike v1 held-out, the KEY
+itself fails on v2 (top-1 0.42-0.59, margin ≈ 0): v1 held-out kept phrasing close to training ("the <attr> of the <entity>" in every template), v2 does not. **A2 − A3 (screen, length-matched)
+= −0.04 → the auxiliary key loss is NOT implicated**; A2 is no better. The 6000-step A3 seeds are no better than the 3000-step screen on v2 (0.29 vs 0.32).
+**Combined reading:** the binding learned from 3 + 2 programmatic templates is template-fitted at EVERY stage that was measured — the write decision (gate 0.19 / 0.35 vs 0.71) and, on
+templates that also change the phrasing around the entity, the address itself (key 0.89 on v1 held-out → ≈ 0.55 on v2). Forcing the gate shows that fixing the write alone does not rescue read.
+By the pre-registered E16a rule ("< 0.40 → rethink before any data spend") the next step is the reviewer's call; nothing launched.
+
 ## Pre-registration — E16: is the write gate causal? + A2 vs A3 on a fresh held-out set (written BEFORE running; do not edit after results arrive)
 Agreed with the reviewer after E15: probes before data. No data generation and no retraining until E16 is read. The E15 gates are not touched or reframed;
 output ranking (0.49) and P1 (0.51) do NOT rescue E15. Reviewer note for the NEXT gate set: make output ranking co-primary (the read metric may understate end-task binding).
