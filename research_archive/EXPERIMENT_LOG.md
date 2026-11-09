@@ -348,6 +348,30 @@ token position; the entity may not be recoverable from that vector) but is NOT p
 (d) if (a)-(c) stay at chance, design the key construction (e.g. entity-aware keys from several positions) — a method change, not more data.
 Cost note: this stage ran on Modal GPUs only (no Gemini / Fireworks / any API); 6 training runs + 9 eval jobs.
 
+## Pre-registration — localisation probes (E13), written BEFORE running them; do not edit after results arrive
+Decided with the external reviewer: before any more training, localise WHERE binding fails with eval-only probes. Order: (1) chunk-8 arm — had already finished before the stop request; its result is committed but
+NOT interpreted (it was trained under the regime that collapsed seeds). (2) the probes below. (3) only then a ONE-seed fine-tune pilot from the Stage B checkpoint, with the E12 binding criteria unchanged, whose only job is
+to check that seed 2's verdict was not an optimisation accident. (4) a key-construction change only if the probes indict the key.
+
+**Key / storage / read probes** (`llm_probe.py`, `launch.py probe <run>`; sets `eval_seen_colliding`, `eval_heldout_colliding`, 300 each, k = 2 / 4 / 8 facts → pooled chance ≈ 0.29). The memory module records exactly
+what it used (capture hook, sanity check 6d proves it does not change the output). With shift_v the first value token of fact i is written by the key at p_i = (first value token) − 1; the question read is at
+q = n·S + prompt_len − 1. Four top-1 metrics among the k facts of a document, each with a Wilson 95% interval:
+  storage  — query the final state ΔW with fact i's OWN write key (a perfect address): does the asked fact's key return its own value?
+  key      — cos(key at q, write key of each fact): is the asked fact's write key the closest?        (addressing, after W_k)
+  hidden   — the same in normalised hidden space before W_k                                         (is the entity in the frozen representation at all?)
+  read     — cos(actual read at q, value written for each fact): does the real read return the asked value?
+plus the write gate at the fact positions vs the document mean, and the max cosine between candidate values (≥0.95 → values indistinguishable at their first token; that attribute is excluded from storage/read conclusions).
+"Above chance" means top-1 ≥ chance + 0.10 AND the Wilson lower bound > chance.
+**Decision rules.** (S) storage NOT above chance → the values are not retrievable even with a perfect address: storage / interference in ΔW (capacity, sparsity, per-entity slots, write gating) — key work would be wasted.
+(A) storage above chance, key NOT above chance → addressing failure; then hidden decides: hidden NOT above chance → the frozen mid-layer state at the question position does not carry the entity relation (keys must come from other
+positions / layers, entity-aware keys); hidden above chance → W_k discards it (train the key projection, e.g. a contrastive key objective). (R) storage and key above chance, read NOT → the MLP read interferes at the
+query key. (O) storage, key and read above chance but the likelihood ranking (E12) at chance → readout (W_o / frozen upper layers) is the bottleneck.
+**Cue probe** (`eval_cue_{orig,cuefree,cuefirst}`, 300 each, train pools, two statements of ONE entity; `orig` = cue ("now / changed") on the later statement as in training, `cuefree` = no cue anywhere, `cuefirst` = cue on the
+EARLIER statement). Metric: share preferring the later value; for `cuefirst` also the share preferring the cue-bearing value (chance 0.50). Rule: on `s2_mix50_s2`, if `orig` ≥ 0.85 but `cuefree` ≤ 0.60 → the overwrite skill is a
+lexical-cue leak in the generator; no further training on that generator until the data is cue-balanced. `cuefirst` ≥ 0.70 for the cue → the model follows the cue against recency.
+**Models:** model v1 (Stage B seeds 0-2), `s2_mix50_s2` (the healthy Stage 2 seed), `s2_single50_s0` (control), `s2_mix50_s0` (a collapsed seed, for reference only).
+**In parallel (does not gate anything):** gated-DeltaNet learning-rate check on the 512-fact stream (`gdn_lr`: lr 1e-3 / 1e-2 vs default 3e-3, 2 seeds) — the 0.08-0.19 collapse must survive it before it is published.
+
 ## Decisions between the second review and Stage 0
 - Chunk size is a first-class variable before "model v1" is frozen (E8: chunk 16 → 4 lifts overwrite accuracy 0.72 → 0.95); screened at LLM scale together with memory width in `fix_d`
   (chunk 32/16/8 with a constant ~1024-token gradient window; hidden 256/512/1024) — 1 seed to screen, 3 to confirm; width is a MEASUREMENT (the earlier synthetic width sweep moved acc@512 only 0.43 → ~0.46) and is reported per unit

@@ -328,6 +328,10 @@ class MiniTitanMemoryModule(nn.Module):
         self.detach_state()
 
         hn_all = rms_norm(hidden) if cfg.input_norm else hidden             # only used by shift_v
+        # Optional probe capture: set `module.capture = {}` before a forward pass to receive, per position, exactly what the
+        # memory used — normalised hidden h, key k, value v (with shift_v: the NEXT token's value), read, write gate, blend.
+        cap = getattr(self, "capture", None)
+        cap_lists = {n_: [] for n_ in ("h", "k", "v", "read", "gate", "blend")} if cap is not None else None
         outs, aux_terms = [], []
         stats = {"surprise": [], "write_gate": [], "retention": [], "blend": []}
         hist: deque = deque(maxlen=max(cfg.aux_lag_chunks, 1))
@@ -364,6 +368,9 @@ class MiniTitanMemoryModule(nn.Module):
 
             blend = self.blend_gate(h, read)
             outs.append(h_raw + blend * self.W_o(read))
+            if cap_lists is not None:
+                for n_, t_ in (("h", h), ("k", k), ("v", v), ("read", read), ("gate", gate), ("blend", blend)):
+                    cap_lists[n_].append(t_.detach())
 
             if update_memory:
                 self._delta, self._mom = new_delta, new_mom
@@ -379,6 +386,8 @@ class MiniTitanMemoryModule(nn.Module):
 
         out = torch.cat(outs, dim=1)
         aux = torch.stack(aux_terms).mean() if aux_terms else hidden.new_zeros(())
+        if cap_lists is not None:
+            cap.update({n_: torch.cat(t_, dim=1) for n_, t_ in cap_lists.items()})
 
         per_chunk = {k_: torch.stack(v_).tolist() for k_, v_ in stats.items()}
         mean_ret = sum(per_chunk["retention"]) / len(per_chunk["retention"])
@@ -546,6 +555,23 @@ def _run_checks():
             assert torch.allclose(o0[:, :q], o1[:, :q], atol=1e-5), f"mode {mode} shift={shift}: output leaks future tokens"
             assert not torch.allclose(o0[:, q:], o1[:, q:], atol=1e-5), "perturbation had no effect downstream"
     print("6c. causal: outputs at p independent of tokens > p        OK  (Mode A/B, shift_v off/on)")
+
+    # 6d. probe capture: returns per-position tensors and does NOT change the output
+    for mode in "AB":
+        mod = mk(mode, shift_v=True, input_norm=True)
+        nn.init.normal_(mod.W_o.weight, std=0.1)
+        mod.eval()
+        h0 = torch.randn(B, T, d)
+        mod.reset_memory()
+        o_ref, _, _ = mod(h0)
+        mod.capture = {}
+        mod.reset_memory()
+        o_cap, _, _ = mod(h0)
+        cap = mod.capture
+        mod.capture = None
+        assert torch.equal(o_ref, o_cap), "capture changed the output"
+        assert all(cap[n_].shape[:2] == (B, T) for n_ in ("h", "k", "v", "read", "gate", "blend"))
+    print("6d. probe capture: shapes OK, output unchanged            OK")
 
     # 7. Mode B one-shot write: re-reading identical keys after a write lowers surprise
     mod = mk("B")

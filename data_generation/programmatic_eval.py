@@ -223,6 +223,30 @@ class Gen:
                                    distractor_values=[v for i, v in enumerate(vals) if i != t], all_values=vals, doc_id=doc_id, n_questions=m))
         return out
 
+    def overwrite_cue(self, variant: str):
+        """Cue probe (two statements of ONE entity). variant:
+             orig      neutral statement first, cue-bearing restatement ("now", "changed to") LATER   (as in training)
+             cuefree   both statements neutral (no now / new / changed); the LATER one is current by convention
+             cuefirst  the cue-bearing restatement comes FIRST, a neutral statement LATER
+           gold = the LATER value in every variant (for bookkeeping); annot records which value carries the cue, so the eval
+           can report 'prefers later' and 'prefers the cue' separately."""
+        r = self.r
+        attr, device, loc = r.choice(list(ATTRS)), r.choice(self.devices), r.choice(self.locs)
+        used = set()
+        v_early, v_late = self.value(attr, used), self.value(attr, used)
+        gap = r.choice([(0.05, 0.15), (0.2, 0.4), (0.5, 0.75)])
+        span = r.uniform(*gap)
+        p0 = r.uniform(0.03, max(0.04, 0.95 - span))
+        cue_early = variant == "cuefirst"
+        cue_late = variant == "orig"
+        s_early = self.fact_sentence(attr, device, loc, v_early, restate=cue_early)
+        s_late = self.fact_sentence(attr, device, loc, v_late, restate=cue_late)
+        text, pos = build_doc(r, r.randint(850, 1150), [(p0, s_early), (min(p0 + span, 0.97), s_late)])
+        cue_value = v_early if cue_early else (v_late if cue_late else None)
+        return self.record(text, self.question(attr, device, loc, current=True), v_late, pos[1], "overwrite_cue", attr=attr,
+                           overwritten=True, n_versions=2, n_colliding=0, absent=False, old_values=[v_early], distractor_values=[],
+                           all_values=[v_early, v_late], variant=variant, cue_value=cue_value, later_value=v_late)
+
     def haystack(self, n_docs):
         r = self.r
         attr, device = r.choice(list(ATTRS)), r.choice(self.devices)
@@ -340,8 +364,25 @@ def main():
     ap.add_argument("--scale", type=float, default=1.0, help="multiply the default category sizes")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--splits", action="store_true", help="v2: write eval_seen_* and eval_heldout_* (disjoint entity types / locations / templates)")
+    ap.add_argument("--cue", action="store_true", help="write the overwrite cue-probe sets eval_cue_{orig,cuefree,cuefirst}.jsonl (train pools)")
     ap.add_argument("--train_out", default="", help="v2: write programmatic TRAINING files minititan_prog_*.jsonl into this directory")
     a = ap.parse_args()
+    if a.cue:
+        os.makedirs(a.out_dir, exist_ok=True)
+        for i, variant in enumerate(("orig", "cuefree", "cuefirst")):
+            g = Gen(5150 + i, "train")
+            recs = [g.overwrite_cue(variant) for _ in range(300)]
+            cue_re = re.compile(r"\b(now|new|changed|update|correction|changeover|revised|amendment)\b", re.I)
+            for rec in recs:
+                verify(rec)
+                sents = re.split(r"(?<=\.)\s+", rec["context"])
+                early = [x for x in sents if rec["annot"]["old_values"][0] in x][0]
+                late = [x for x in sents if rec["annot"]["later_value"] in x][0]
+                want = {"orig": (False, True), "cuefree": (False, False), "cuefirst": (True, False)}[variant]
+                assert (bool(cue_re.search(early)), bool(cue_re.search(late))) == want, (variant, early, late)
+            write_jsonl(os.path.join(a.out_dir, f"eval_cue_{variant}.jsonl"), recs)
+            print(f"eval_cue_{variant}: {len(recs)} records (verified)")
+        return
     if a.train_out:
         data = generate_train(a.seed + 1000, n_colliding_docs=4000, n_overwrite=6000, n_single=4000)
         os.makedirs(a.train_out, exist_ok=True)

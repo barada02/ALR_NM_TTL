@@ -88,6 +88,26 @@ def eval_llm(run: str, files: list, gen_n: int = 100, max_new: int = 24, limit: 
     return res
 
 
+@app.function(image=image, gpu=GPU, cpu=4.0, memory=32768, timeout=2 * 60 * 60,
+              volumes={"/data": data_vol, "/cache": cache_vol, "/vol": res_vol})
+def probe_llm(run: str, files: list, tag: str = "probe", sha: str = "") -> dict:
+    """Localisation probes (storage / addressing / read) on a trained checkpoint. Eval-only."""
+    sys.path.insert(0, REMOTE_SRC)
+    from llm_config import LLMConfig
+    from llm_probe import run_probe
+
+    saved = json.load(open(f"/vol/llm/{run}/result.json"))
+    cfg = LLMConfig(**saved["config"])
+    cfg.max_ctx_segments = 64
+    res = run_probe(cfg, f"/vol/llm/{run}/{run}_memory.pt", [f"/data/miniTitan_eval/{f}.jsonl" for f in files], sha=sha)
+    res["run"], res["tag"] = run, tag
+    os.makedirs("/vol/llm_probe", exist_ok=True)
+    with open(f"/vol/llm_probe/{run}__{tag}.json", "w") as f:
+        json.dump(res, f)
+    res_vol.commit()
+    return res
+
+
 def _git_sha() -> str:
     try:
         sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
@@ -97,6 +117,20 @@ def _git_sha() -> str:
         return sha + ("-dirty" if dirty else "")
     except Exception:
         return "unknown"
+
+
+@app.local_entrypoint()
+def probe_main(run: str, files: str = "eval_seen_colliding,eval_heldout_colliding", tag: str = "probe"):
+    sys.path.insert(0, HERE)
+    from llm_probe import summarize_probe
+
+    res = probe_llm.remote(run, files.split(","), tag, _git_sha())
+    out_dir = os.path.join(ROOT, "results", "llm_probe")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"{run}__{tag}.json")
+    with open(path, "w") as f:
+        json.dump(res, f, indent=1)
+    print(f"saved {path}\n{summarize_probe(res)}")
 
 
 @app.local_entrypoint()
