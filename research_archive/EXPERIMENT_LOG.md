@@ -425,6 +425,26 @@ clause-level pooled key (e.g. write at the end of the sentence). An auxiliary ke
 **Caveat that limits the claim:** the entity-vs-entity success is substantially LEXICAL — the question repeats the entity's name ("flow meter at Ridge 4"), which is why it transfers to unseen names (raw cosine already 0.71).
 Paraphrased or pronoun references are not tested here and are the obvious next stress test for entity-pooled keys.
 
+### E17 screen (done; selection by the pre-registered rule, v3 NOT opened)
+Training `results/llm/v6_A{3,4}d_s0.json`; A3d probes `results/llm_probe/v6_A3d_s0__screen.json`, output ranking `results/llm_eval/v6_A3d_s0__screen.json`.
+```
+arm                         abort gain @1000   Gemini long-ctx NLL "on" @3000   v2 read            seen_div read    v2 output ranking (chance 0.33)
+A3d (A3, diversified data)  2.43  pass         1.183                            0.32 [0.27,0.37]   0.61 [0.55,0.66]  0.48 (oracle 0.64, none 0.29)
+A4d (context-only key)      0.40  ABORT        2.433                            —                  —                 —
+A3d v2 probes: storage 0.61, key 0.72, hidden 0.30, gate@fact 0.43 vs doc 0.06 (E15/E16 A3: storage 0.52-0.58, key 0.42-0.59, gate@fact ~0.2, read 0.29 pooled, ranking 0.36-0.41)
+```
+**Selection.** A4d is out by the abort rule; A3d is the only surviving arm and goes to confirmation. The v2 numbers above did not enter the choice.
+**What A4d does and does not show (narrow reading, as logged).** E15/E16: dropping the local part *at evaluation* on a model trained with it improved held-out read
+(0.33 → 0.39) — the context part had co-adapted with it, and removing it removed a memorisation channel. A4d is a different intervention: training *without* it from a warm
+start changes every stored address at once, so model v1's ΔW addressing is invalidated and recall collapses before it is rebuilt (gain 0.40 at step 1000, NLL 2.43). Supported
+claim: *the local part hurts transfer when present at read time, yet removing it at training time destroys the warm-started addressing faster than 1000 steps can rebuild it.*
+NOT supported: "training cannot do without the local part" — a from-scratch or longer context-only run was never tried. (A possible reading, untested: the local part is
+scaffolding the context part leans on during learning.)
+**Screen observations (development set, reported only).** Diversified data moved the write side, not the read: gate@fact on v2 0.43 (was ~0.2), storage 0.61, key 0.72 — yet
+v2 read is still 0.32, at the E15 level. Output ranking on v2 rose to 0.48 (was 0.36-0.41). The confirmation number to watch besides v3 read is Gemini NLL: 1.183 at 3000
+steps is above the 1.15 gate; if the 3-seed mean at 6000 lands near 1.17 again it is the second consecutive miss under rule (e) and the recall cost is reported as a stable
+property of the entity-keyed design, not a near-miss. It stays a secondary gate; v3 read is the result.
+
 ## Pre-registration — E17: the FINAL architecture iteration (written BEFORE any E17 training run; do not edit after results arrive)
 Reviewer's call after E16: one diversified retrain, then write the paper whatever the outcome. Rationale: E15/E16 trained binding on 5 surface forms; the
 supported conclusion so far is "does not transfer from 5 templates to a 6th", not "test-time memory cannot address facts". E16 eliminated the competing
