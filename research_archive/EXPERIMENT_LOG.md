@@ -425,6 +425,48 @@ clause-level pooled key (e.g. write at the end of the sentence). An auxiliary ke
 **Caveat that limits the claim:** the entity-vs-entity success is substantially LEXICAL — the question repeats the entity's name ("flow meter at Ridge 4"), which is why it transfers to unseen names (raw cosine already 0.71).
 Paraphrased or pronoun references are not tested here and are the obvious next stress test for entity-pooled keys.
 
+### E15 confirmation — A3, 6000 steps, seeds 0 / 1 / 2 (done; judged by the gates registered above, nothing re-tuned)
+Runs `v5c_A3_s{0,1,2}` (commit bbfe0e3); all passed the step-1000 abort check (gain 2.76 / 3.02 / 2.39). Held-out evaluated only after all three finished. Probes `results/llm_probe/v5c_A3_s*__{confirm,abl_local,abl_context}.json`,
+output ranking `results/llm_eval/v5c_A3_s*__confirm.json`. Values: per seed s0 / s1 / s2, then pooled over seeds (n = 900) with Wilson 95 %.
+```
+gate                                    threshold                  result                                         verdict
+1 held-out colliding READ               >= 0.50, Wilson lo > 0.29  0.31 / 0.35 / 0.34   pooled 0.33 [0.30, 0.36]   FAIL
+2 seen colliding READ                   >= 0.60                    0.78 / 0.79 / 0.77   pooled 0.78 [0.75, 0.81]   pass
+3 Gemini long-context NLL (on)          <= 1.15 (mean)             1.129 / 1.166 / 1.204  mean 1.166 +- 0.037      FAIL (rule e)
+S output likelihood ranking, held-out   >= 0.45                    0.50 / 0.51 / 0.47   pooled 0.49 [0.46, 0.53]   pass (chance 0.33)
+S P1 held-out READ                      >= 0.45                    0.49 / 0.50 / 0.56   pooled 0.51 [0.48, 0.55]   pass (chance 0.38)
+S P2 held-out READ                      Wilson lo > chance 0.38    0.35 / 0.37 / 0.39   pooled 0.37 [0.34, 0.40]   FAIL -> claim limited to mention-level binding
+
+probe (pooled)            storage   key    read   | write gate at fact / doc mean | key margin
+seen colliding            0.82      1.00   0.78   | 0.71 / 0.056                  | 0.58
+held-out colliding        0.52      0.89   0.33   | 0.19 / 0.055                  | 0.10
+seen P1                   0.88      1.00   0.85   | 0.70 / 0.052                  | 0.56
+held-out P1               0.78      0.95   0.51   | 0.70 / 0.052                  | 0.15
+seen / held-out P2        0.55/0.59 0.43/0.41 0.37/0.37 | 0.65 / 0.053            | -0.01
+held-out colliding by #colliders (chance 0.50 / 0.25 / 0.12): read 0.54 / 0.28 / 0.17 · storage 0.66 / 0.56 / 0.34 · key 0.94 / 0.91 / 0.82   (seen: read 0.89 / 0.80 / 0.66)
+
+key-part ablation (EVAL-ONLY, model trained with both parts)   seen key / read    held-out key / read
+both parts (as trained)                                       1.00 / 0.78        0.89 / 0.33
+local part zeroed                                             1.00 / 0.70        0.99 / 0.39
+context part zeroed                                           0.29 / 0.32        0.30 / 0.28
+training-time pre-RMSNorm size of the read-key parts at step 6000: local ~24-25, context 5.8 / 8.9 / 7.6; |W_c| 9.8 (5.6-7.3 at screen 3000); capped-sentence share 0-0.02
+output ranking, other sets (reported only; on / oracle = fact in the frozen model's window): held-out overwrite 0.78 / 0.81 / 0.79 (oracle 0.62) · held-out colliding+overwrite
+0.70 / 0.69 / 0.72 (oracle 0.47) · held-out haystack 0.48 / 0.54 / 0.51 (oracle 0.80) · seen sets 0.97-1.00 (oracle 0.52-0.88)
+```
+**Verdict: E15 is NOT confirmed.** Primary gate 1 fails (held-out read 0.33, near chance at every collider count), and gate 3 fails marginally. By the lock, A2 does not inherit this held-out set.
+Reading (diagnostic, not re-litigating the gate):
+1. **The failure is mainly the WRITE GATE on unseen templates, not addressing.** On held-out colliding (new entities AND new fact templates) the write gate at the fact token is 0.19 vs 0.71 on seen
+   (document mean unchanged, 0.055) → the value is weakly written (storage 0.52). On held-out P1 (new entities, but a TRAINING template) the gate opens normally (0.70) and read is 0.51. So the write
+   decision is template-fitted. This is rule (b): "seen passes, held-out fails → template / entity fitting; diversify first".
+2. **Addressing transfers only partly.** Key top-1 stays high on held-out (0.89 / 0.95) but the margin collapses (0.58 → 0.10 / 0.15): the right fact wins narrowly, so reads blend neighbours. Seen key 1.00
+   with margin 0.58 was largely memorised entity directions (the E14 warning holds).
+3. **The context part carries the binding; the local part is not vestigial but hurts transfer.** Zeroing context sends key to chance everywhere; zeroing local RAISES held-out key (0.89 → 0.99, margin
+   0.10 → 0.39) and read (0.33 → 0.39). The design doc's "composite" description stands, with the note that the local term is where the held-out interference enters.
+4. **Pronoun binding (P2) does not exist** — key at or below chance with negative margin; expected from the design (the write pool for "Its <attr> is V." never contains the entity). Any claim is mention-level only.
+5. **Seen output ranking 0.97-1.00 is ABOVE the in-context oracle (0.52-0.88)** — another memorisation signature on seen pools; held-out ranking (0.49) is below the oracle (0.71), as a real memory should be.
+6. Gemini 1.166: rule (e) — binding is not a free improvement; the mixture / lr are NOT changed post hoc.
+**Next step is the reviewer's call** (nothing launched): by rule (b), diversify fact templates / entities in the training mixture before any new arm; A2 would need a fresh held-out set either way.
+
 ### E15 lock + confirmation protocol (written BEFORE the confirmation runs and BEFORE any held-out evaluation; do not edit after results arrive)
 **Locked arm: A3** (attention pool + auxiliary key loss), by the pre-registered selection rule on SEEN data only: 0.78 [0.73, 0.82] vs A2 0.63 [0.58, 0.69], non-overlapping intervals; at 7 colliders 0.63 vs 0.43 (chance 0.12).
 The claim must say "with an auxiliary key-alignment loss (training-time annotations only, none at inference)".
