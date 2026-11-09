@@ -214,8 +214,18 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
 
     model = SegmentedMemoryLM(cfg).to(device)
     model.lm.to(device)
+    warm = None
+    if cfg.init_ckpt:                                      # v5 warm start: new parameters (W_c, pool) stay zero-initialised
+        missing, unexpected = model.memory.load_state_dict(torch.load(cfg.init_ckpt, map_location=device), strict=False)
+        assert not unexpected, f"unexpected keys in warm-start checkpoint: {unexpected}"
+        assert all(k.startswith(("W_c", "pool_")) for k in missing), f"warm start is missing non-new keys: {missing}"
+        warm = {"from": cfg.init_ckpt, "new_params": list(missing)}
+        if verbose:
+            print("[warm start]", warm)
     model.train()
     n_params = sum(p.numel() for p in model.memory.parameters())
+    abort = None
+    abort_val = [tokenize_example(tok, ex, cfg) for ex in splits["long_context"]["val"][:48]] if (cfg.abort_step and "long_context" in splits) else []
     opt = torch.optim.AdamW(model.memory_parameters(), lr=cfg.lr, weight_decay=0.0)
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min(1.0, (s + 1) / max(cfg.warmup, 1)) *
@@ -271,6 +281,8 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
             contrast_gap = float(gap.detach().mean())
         if cfg.mem_mode == "A" and model.last_aux is not None:
             loss = loss + cfg.aux_weight * model.last_aux
+        if cfg.key_mode == "composite" and cfg.key_loss_weight > 0 and model.last_aux is not None:
+            loss = loss + cfg.key_loss_weight * model.last_aux                  # auxiliary key loss (0 when the batch has none)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gn = torch.nn.utils.clip_grad_norm_(model.memory_parameters(), cfg.grad_clip)
@@ -283,10 +295,28 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
         sched.step()
         run_loss.append(loss.item())
         run_met = {k: model.last_met[k] for k in ("mean_write_gate", "retention_halflife_tokens", "state_norm_ratio",
-                                                  "mean_blend", "mean_surprise") if k in model.last_met}
+                                                  "mean_blend", "mean_surprise", "W_c_norm") if k in model.last_met}
+        if cfg.key_mode == "composite":
+            run_met["capped_sentence_share"] = model.last_seg_share
+            if cfg.key_loss_weight > 0 and model.last_aux is not None:
+                run_met["key_loss"] = float(model.last_aux.detach())
+        if cfg.ckpt_steps and str(step) in cfg.ckpt_steps.split(","):
+            os.makedirs(cfg.out_dir, exist_ok=True)
+            torch.save(model.memory.state_dict(), os.path.join(cfg.out_dir, f"{cfg.run_name or 'run'}_memory_step{step}.pt"))
+        if cfg.abort_step and step == cfg.abort_step and abort_val:
+            model.eval()
+            q_ = eval_nll(model, abort_val, cfg, pad_id, device, ("swap", "on"))
+            gain = sum(a_ - b_ for a_, b_ in zip(q_["swap"], q_["on"])) / len(q_["on"])
+            model.train()
+            abort = {"step": step, "doc_specific_gain": gain, "aborted": gain < cfg.abort_min_gain}
+            if verbose:
+                print(f"  [abort check @{step}] Gemini long-context document-specific gain {gain:.3f} "
+                      f"({'ABORT: recall collapse' if abort['aborted'] else 'ok'})")
+            if abort["aborted"]:
+                break
         if step % cfg.log_every == 0:
             row = {"step": step, "nll": sum(run_loss) / len(run_loss), "grad_norm": float(gn),
-                   "nll_on_batch": float(nll_on.mean()), "swap_gap_batch": contrast_gap,
+                   "nll_on_batch": float(nll_on.detach().mean()), "swap_gap_batch": contrast_gap,
                    "time_s": time.time() - t0, "mem_gb": torch.cuda.max_memory_allocated() / 1e9, **run_met}
             curve.append(row)
             run_loss = []
@@ -310,7 +340,7 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
         torch.save(model.memory.state_dict(), os.path.join(cfg.out_dir, f"{cfg.run_name or 'run'}_memory.pt"))
     state_floats = sum(o * i for o, i in model.memory.memory.shapes())          # per-sequence fast state (the fair-comparison axis)
     return {"config": asdict(cfg), "git_sha": sha, "memory_params": n_params, "state_floats": state_floats,
-            "curve": curve, "quick_eval": quick,
+            "warm_start": warm, "abort": abort, "curve": curve, "quick_eval": quick,
             "final": final, "skipped_nonfinite_steps": skipped, "train_time_s": train_time,
             "wall_time_s": time.time() - t_start, "peak_gpu_gb": torch.cuda.max_memory_allocated() / 1e9,
             "versions": {"torch": torch.__version__, "transformers": transformers.__version__}}

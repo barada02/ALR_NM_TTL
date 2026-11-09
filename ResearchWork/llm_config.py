@@ -40,6 +40,17 @@ class LLMConfig:
     retention_learned: bool = True
     aux_weight: float = 0.1          # Mode A only
 
+    # v5 entity-keyed memory (research_archive/DESIGN_ENTITY_KEYS.md)
+    key_mode: str = "token"          # token (v4) | composite (local token part + sentence-pooled context part, two keys)
+    pool: str = "attn"               # composite context pool: mean | attn | oracle (gold spans on programmatic docs; diagnostic arm D)
+    read_cap: int = 64               # read context = previous + current sentence, at most 64 tokens in total
+    mask_cross_pair: bool = True     # never write (last token of a sentence -> first token of the next)
+    key_loss_weight: float = 0.0     # >0: auxiliary contrastive key loss on programmatic colliding docs (arm A3; training signal only)
+    init_ckpt: str = ""              # warm start: memory state_dict to load (new parameters stay zero-initialised)
+    abort_step: int = 0              # >0: at this step, stop if the Gemini long-context document-specific gain < abort_min_gain
+    abort_min_gain: float = 1.0
+    ckpt_steps: str = ""             # extra memory checkpoints, e.g. "2000" (extension rule needs the 2000-step probe)
+
     # paired controls (the fair reference for the headline numbers)
     train_mode: str = "memory"       # memory: the real model
                                      # adapter_seg: SAME module with writes disabled on the segmented model = document-free adapter

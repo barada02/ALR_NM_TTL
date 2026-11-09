@@ -1,0 +1,590 @@
+{
+ "config": {
+  "run_name": "v5smoke_D",
+  "base_model": "Qwen/Qwen2-0.5B",
+  "insert": "mid",
+  "insert_layer": -1,
+  "seg_len": 256,
+  "max_ctx_segments": 8,
+  "mem_mode": "B",
+  "mem_hidden": 256,
+  "mem_layers": 2,
+  "rank": 8,
+  "chunk_size": 32,
+  "tbptt_chunks": 0,
+  "shift_v": true,
+  "inner_lr": 0.2,
+  "inner_clip": 0.1,
+  "use_momentum": false,
+  "second_order": true,
+  "retention_bias": 4.0,
+  "retention_learned": true,
+  "aux_weight": 0.1,
+  "key_mode": "composite",
+  "pool": "oracle",
+  "read_cap": 64,
+  "mask_cross_pair": true,
+  "key_loss_weight": 0.0,
+  "init_ckpt": "/vol/llm/b_full_s0/b_full_s0_memory.pt",
+  "abort_step": 6,
+  "abort_min_gain": -100.0,
+  "ckpt_steps": "",
+  "train_mode": "memory",
+  "contrast_weight": 0.0,
+  "contrast_margin": 1.0,
+  "crop": true,
+  "crop_curriculum": 0.5,
+  "crop_pre_tokens": 48,
+  "crop_d_min": 32,
+  "mix": "long_context:0.16667,dialogue:0.16667,agentic:0.16667,prog_colliding:0.25,prog_overwrite:0.15,prog_single:0.1",
+  "eval_types": "long_context,dialogue,agentic",
+  "crop_annotated": false,
+  "data_dir": "/data/miniTitan_data",
+  "types": "long_context,dialogue,agentic,prog_colliding,prog_overwrite,prog_single",
+  "val_per_type": 6,
+  "gen_eval_per_type": 3,
+  "seed": 0,
+  "split_seed": 0,
+  "batch_size": 2,
+  "steps": 12,
+  "lr": 0.0003,
+  "warmup": 100,
+  "grad_clip": 1.0,
+  "log_every": 2,
+  "eval_every": 1000000000,
+  "eval_batches": 12,
+  "gen_max_new": 8,
+  "save_ckpt": false,
+  "out_dir": "/vol/llm/v5smoke_D"
+ },
+ "git_sha": "ebee712-dirty",
+ "memory_params": 4705700,
+ "state_floats": 458752,
+ "warm_start": {
+  "from": "/vol/llm/b_full_s0/b_full_s0_memory.pt",
+  "new_params": [
+   "W_c.weight"
+  ]
+ },
+ "abort": {
+  "step": 6,
+  "doc_specific_gain": 2.327593130680422,
+  "aborted": false
+ },
+ "curve": [
+  {
+   "step": 2,
+   "nll": 5.96611213684082,
+   "grad_norm": 33.06936264038086,
+   "nll_on_batch": 5.16035270690918,
+   "swap_gap_batch": null,
+   "time_s": 2.8342995643615723,
+   "mem_gb": 4.478450176,
+   "mean_write_gate": 0.08345321806458135,
+   "retention_halflife_tokens": 3742.6365757339418,
+   "state_norm_ratio": 0.13862401247024536,
+   "mean_blend": 0.7003872568408648,
+   "mean_surprise": 0.7947374073167642,
+   "W_c_norm": 0.0026870265137404203,
+   "capped_sentence_share": 0.0
+  },
+  {
+   "step": 4,
+   "nll": 1.7662326097488403,
+   "grad_norm": 4.467024803161621,
+   "nll_on_batch": 2.131488800048828,
+   "swap_gap_batch": null,
+   "time_s": 3.567124843597412,
+   "mem_gb": 4.518782976,
+   "mean_write_gate": 0.0889815129339695,
+   "retention_halflife_tokens": 47869.83505955133,
+   "state_norm_ratio": 0.1115129142999649,
+   "mean_blend": 0.7033768240362406,
+   "mean_surprise": 0.4498462677001953,
+   "W_c_norm": 0.009751209989190102,
+   "capped_sentence_share": 0.0
+  },
+  {
+   "step": 6,
+   "nll": 1.7278963327407837,
+   "grad_norm": 2.796088695526123,
+   "nll_on_batch": 2.197234630584717,
+   "swap_gap_batch": null,
+   "time_s": 5.53697943687439,
+   "mem_gb": 4.518782976,
+   "mean_write_gate": 0.1256246049888432,
+   "retention_halflife_tokens": 47201.61608145367,
+   "state_norm_ratio": 0.12160074710845947,
+   "mean_blend": 0.6457505505532026,
+   "mean_surprise": 0.6293516866862774,
+   "W_c_norm": 0.017441993579268456,
+   "capped_sentence_share": 0.0
+  },
+  {
+   "step": 8,
+   "nll": 1.7224187850952148,
+   "grad_norm": 3.6407675743103027,
+   "nll_on_batch": 1.7856123447418213,
+   "swap_gap_batch": null,
+   "time_s": 6.322383403778076,
+   "mem_gb": 4.602906624,
+   "mean_write_gate": 0.08822336420416832,
+   "retention_halflife_tokens": 46447.15582576799,
+   "state_norm_ratio": 0.1346597522497177,
+   "mean_blend": 0.7433552717169126,
+   "mean_surprise": 0.4382488901416461,
+   "W_c_norm": 0.02393008954823017,
+   "capped_sentence_share": 0.13636363636363635
+  },
+  {
+   "step": 10,
+   "nll": 1.7513295412063599,
+   "grad_norm": 12.069348335266113,
+   "nll_on_batch": 1.4620540142059326,
+   "swap_gap_batch": null,
+   "time_s": 7.036836862564087,
+   "mem_gb": 4.602906624,
+   "mean_write_gate": 0.06602236941190702,
+   "retention_halflife_tokens": 22180698.68692369,
+   "state_norm_ratio": 0.15835914015769958,
+   "mean_blend": 0.56358795187303,
+   "mean_surprise": 0.7264729823384967,
+   "W_c_norm": 0.028279464691877365,
+   "capped_sentence_share": 0.0
+  },
+  {
+   "step": 12,
+   "nll": 1.7576665878295898,
+   "grad_norm": 24.107131958007812,
+   "nll_on_batch": 1.6831169128417969,
+   "swap_gap_batch": null,
+   "time_s": 7.970251798629761,
+   "mem_gb": 4.602906624,
+   "mean_write_gate": 0.08059748037097354,
+   "retention_halflife_tokens": 17580.40579926321,
+   "state_norm_ratio": 0.1473364233970642,
+   "mean_blend": 0.7041976228356361,
+   "mean_surprise": 0.7374587630232176,
+   "W_c_norm": 0.03079955093562603,
+   "capped_sentence_share": 0.0
+  }
+ ],
+ "quick_eval": [],
+ "final": {
+  "long_context": {
+   "n_val": 6,
+   "nll": {
+    "none": 3.6780192454655967,
+    "off": 2.700880209604899,
+    "swap": 3.2445823351542153,
+    "on": 0.9409110592678189,
+    "oracle": 0.5506679688890775
+   },
+   "ppl": {
+    "none": 39.56794202051935,
+    "off": 14.892834773524038,
+    "swap": 25.6509943040065,
+    "on": 2.5623147758779985,
+    "oracle": 1.7344111637198676
+   },
+   "nll_gain_on_vs_none": 2.7371081861977777,
+   "nll_gain_on_vs_off": 1.75996915033708,
+   "nll_gain_on_vs_swap": 2.3036712758863964,
+   "frac_gain_recovered": 0.8752160995467267,
+   "doc_specific_share": 0.841644216879317,
+   "nll_by_n_segments": {
+    "5": {
+     "none": 3.61400043964386,
+     "off": 2.5001906156539917,
+     "swap": 3.123241424560547,
+     "on": 0.8973538978025317,
+     "oracle": 0.5269488617777824,
+     "count": 2
+    },
+    "6": {
+     "none": 3.0653042793273926,
+     "off": 2.399144411087036,
+     "swap": 2.8090882301330566,
+     "on": 0.740350050230821,
+     "oracle": 0.5284933646519979,
+     "count": 3
+    },
+    "7": {
+     "none": 5.644201755523682,
+     "off": 4.007466793060303,
+     "swap": 4.793746471405029,
+     "on": 1.6297084093093872,
+     "oracle": 0.6646299958229065,
+     "count": 1
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 2.924082358678182,
+     "off": 2.0719592571258545,
+     "swap": 2.6036163171132407,
+     "on": 0.636619438106815,
+     "oracle": 0.505525474747022,
+     "count": 3
+    },
+    "1024+": {
+     "none": 4.834266901016235,
+     "off": 3.5725901126861572,
+     "swap": 4.121363520622253,
+     "on": 1.3953181505203247,
+     "oracle": 0.7344214916229248,
+     "count": 2
+    },
+    "<256": {
+     "none": 3.6273345947265625,
+     "off": 2.8442232608795166,
+     "swap": 3.4139180183410645,
+     "on": 0.9449717402458191,
+     "oracle": 0.31858840584754944,
+     "count": 1
+    }
+   },
+   "nll_by_fact_position": {
+    "early": {
+     "none": 3.688156175613403,
+     "off": 2.6722115993499758,
+     "swap": 3.2107151985168456,
+     "on": 0.9400989230722189,
+     "oracle": 0.5970838814973831,
+     "count": 5
+    },
+    "late": {
+     "none": 3.6273345947265625,
+     "off": 2.8442232608795166,
+     "swap": 3.4139180183410645,
+     "on": 0.9449717402458191,
+     "oracle": 0.31858840584754944,
+     "count": 1
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.04761904761904762,
+     "digit_recall": 0.0
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.2222222222222222,
+     "digit_recall": 0.16666666666666666
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.0,
+     "digit_recall": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "1809"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The desalination plant desperately needed to"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the chemical concentration reading"
+     }
+    ],
+    "on": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "October 14, 19"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "4,200 kilograms"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "03:14 AM"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "Elias Vogt was recognized for his service"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The specific part that the desalination"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the titanium dioxide reading"
+     }
+    ]
+   }
+  },
+  "dialogue": {
+   "n_val": 6,
+   "nll": {
+    "none": 2.4713574846585593,
+    "off": 2.221637705961863,
+    "swap": 2.311611274878184,
+    "on": 1.7785930633544922,
+    "oracle": 1.1090730081001918
+   },
+   "ppl": {
+    "none": 11.838506539798061,
+    "off": 9.222422120680132,
+    "swap": 10.09067040704365,
+    "on": 5.921519352530357,
+    "oracle": 3.0315468721134597
+   },
+   "nll_gain_on_vs_none": 0.6927644213040671,
+   "nll_gain_on_vs_off": 0.44304464260737086,
+   "nll_gain_on_vs_swap": 0.5330182115236917,
+   "frac_gain_recovered": 0.5085313921026579,
+   "doc_specific_share": 0.7694076011010099,
+   "nll_by_n_segments": {
+    "3": {
+     "none": 2.329048365354538,
+     "off": 2.081761509180069,
+     "swap": 2.1588625013828278,
+     "on": 1.7822209000587463,
+     "oracle": 1.2113628834486008,
+     "count": 4
+    },
+    "4": {
+     "none": 2.7559757232666016,
+     "off": 2.5013900995254517,
+     "swap": 2.6171088218688965,
+     "on": 1.7713373899459839,
+     "oracle": 0.9044932574033737,
+     "count": 2
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 2.7100464344024657,
+     "off": 2.414820146560669,
+     "swap": 2.5081504344940186,
+     "on": 1.9322410106658936,
+     "oracle": 1.2342229187488556,
+     "count": 5
+    },
+    "256-512": {
+     "none": 1.2779127359390259,
+     "off": 1.2557255029678345,
+     "swap": 1.3289154767990112,
+     "on": 1.0103533267974854,
+     "oracle": 0.48332345485687256,
+     "count": 1
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.3489683231618716,
+     "digit_recall": 0.0
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.2526881720430107,
+     "digit_recall": 0.0
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.34681003584229386,
+     "digit_recall": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a new car"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set up the system"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on a"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a 2"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to log in as '"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focused on a"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a 2"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set their ID for"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on Type"
+     }
+    ]
+   }
+  },
+  "agentic": {
+   "n_val": 6,
+   "nll": {
+    "none": 4.218058784802754,
+    "off": 2.70569501320521,
+    "swap": 2.828137437502543,
+    "on": 2.0833367904027305,
+    "oracle": 2.427365481853485
+   },
+   "ppl": {
+    "none": 67.901544758739,
+    "off": 14.96471375072941,
+    "swap": 16.91392821954677,
+    "on": 8.031222760513693,
+    "oracle": 11.32899628365962
+   },
+   "nll_gain_on_vs_none": 2.134721994400024,
+   "nll_gain_on_vs_off": 0.6223582228024798,
+   "nll_gain_on_vs_swap": 0.7448006470998125,
+   "frac_gain_recovered": 1.1921203876086095,
+   "doc_specific_share": 0.3488981933261727,
+   "nll_by_n_segments": {
+    "2": {
+     "none": 4.592412948608398,
+     "off": 2.7575980027516684,
+     "swap": 2.9217249552408853,
+     "on": 2.0291550556818643,
+     "oracle": 2.666072130203247,
+     "count": 3
+    },
+    "3": {
+     "none": 3.843704620997111,
+     "off": 2.6537920236587524,
+     "swap": 2.7345499197642007,
+     "on": 2.137518525123596,
+     "oracle": 2.188658833503723,
+     "count": 3
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 3.843704620997111,
+     "off": 2.6537920236587524,
+     "swap": 2.7345499197642007,
+     "on": 2.137518525123596,
+     "oracle": 2.188658833503723,
+     "count": 3
+    },
+    "256-512": {
+     "none": 4.592412948608398,
+     "off": 2.7575980027516684,
+     "swap": 2.9217249552408853,
+     "on": 2.0291550556818643,
+     "oracle": 2.666072130203247,
+     "count": 3
+    }
+   },
+   "pref_acc": {
+    "none": 0.6666666666666666,
+    "off": 0.8333333333333334,
+    "swap": 0.8333333333333334,
+    "on": 0.8333333333333334,
+    "oracle": 0.8333333333333334
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.16566113624937154,
+     "digit_recall": 0.0
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.15528985507246376,
+     "digit_recall": 0.0
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.19130216189039717,
+     "digit_recall": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to continue with the"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the process"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue the process"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "Execute the python script using the specific '"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "Use the original primary dataset ID 'd"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "Execute the script using the '--target-dir"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to release the lock"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the backup"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue with the"
+     }
+    ]
+   }
+  }
+ },
+ "skipped_nonfinite_steps": 0,
+ "train_time_s": 7.970710039138794,
+ "wall_time_s": 35.224087953567505,
+ "peak_gpu_gb": 4.602906624,
+ "versions": {
+  "torch": "2.15.0+cu132",
+  "transformers": "5.22.2"
+ }
+}

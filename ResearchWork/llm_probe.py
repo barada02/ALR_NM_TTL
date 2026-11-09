@@ -42,7 +42,7 @@ def wilson(k: int, n: int, z: float = 1.96):
 def capture(model: SegmentedMemoryLM, b) -> Dict[str, torch.Tensor]:
     model.memory.capture = {}
     try:
-        model.question_hidden(b["ids"], b["write"], "on")
+        model.question_hidden(b["ids"], b["write"], "on", extra=b)
         cap = model.memory.capture
     finally:
         model.memory.capture = None
@@ -83,7 +83,7 @@ def probe_file(model, tok, cfg: LLMConfig, path: str, pad_id: int, device, bs: i
             if any(p is None or p < 0 for p in pos):
                 continue
             q = n * S + int(b["prompt_len"][j]) - 1
-            K = cap["k"][j, pos]                                         # (m, d) write keys of the m facts
+            K = cap.get("kw", cap["k"])[j, pos]                          # (m, d) WRITE keys of the m facts (v5: k^write)
             V = cap["v"][j, pos]                                         # (m, d) values written for their first value token
             H = cap["h"][j, pos]                                         # (m, d) normalised hidden at the write positions
             kq, hq, rq = cap["k"][j, q], cap["h"][j, q], cap["read"][j, q]

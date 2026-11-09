@@ -1,0 +1,598 @@
+{
+ "config": {
+  "run_name": "v5smoke_A3",
+  "base_model": "Qwen/Qwen2-0.5B",
+  "insert": "mid",
+  "insert_layer": -1,
+  "seg_len": 256,
+  "max_ctx_segments": 8,
+  "mem_mode": "B",
+  "mem_hidden": 256,
+  "mem_layers": 2,
+  "rank": 8,
+  "chunk_size": 32,
+  "tbptt_chunks": 0,
+  "shift_v": true,
+  "inner_lr": 0.2,
+  "inner_clip": 0.1,
+  "use_momentum": false,
+  "second_order": true,
+  "retention_bias": 4.0,
+  "retention_learned": true,
+  "aux_weight": 0.1,
+  "key_mode": "composite",
+  "pool": "attn",
+  "read_cap": 64,
+  "mask_cross_pair": true,
+  "key_loss_weight": 0.1,
+  "init_ckpt": "/vol/llm/b_full_s0/b_full_s0_memory.pt",
+  "abort_step": 6,
+  "abort_min_gain": -100.0,
+  "ckpt_steps": "",
+  "train_mode": "memory",
+  "contrast_weight": 0.0,
+  "contrast_margin": 1.0,
+  "crop": true,
+  "crop_curriculum": 0.5,
+  "crop_pre_tokens": 48,
+  "crop_d_min": 32,
+  "mix": "long_context:0.16667,dialogue:0.16667,agentic:0.16667,prog_colliding:0.25,prog_overwrite:0.15,prog_single:0.1",
+  "eval_types": "long_context,dialogue,agentic",
+  "crop_annotated": false,
+  "data_dir": "/data/miniTitan_data",
+  "types": "long_context,dialogue,agentic,prog_colliding,prog_overwrite,prog_single",
+  "val_per_type": 6,
+  "gen_eval_per_type": 3,
+  "seed": 0,
+  "split_seed": 0,
+  "batch_size": 2,
+  "steps": 12,
+  "lr": 0.0003,
+  "warmup": 100,
+  "grad_clip": 1.0,
+  "log_every": 2,
+  "eval_every": 1000000000,
+  "eval_batches": 12,
+  "gen_max_new": 8,
+  "save_ckpt": false,
+  "out_dir": "/vol/llm/v5smoke_A3"
+ },
+ "git_sha": "ebee712-dirty",
+ "memory_params": 4763108,
+ "state_floats": 458752,
+ "warm_start": {
+  "from": "/vol/llm/b_full_s0/b_full_s0_memory.pt",
+  "new_params": [
+   "W_c.weight",
+   "pool_proj.weight",
+   "pool_u.weight"
+  ]
+ },
+ "abort": {
+  "step": 6,
+  "doc_specific_gain": 2.3242318108677864,
+  "aborted": false
+ },
+ "curve": [
+  {
+   "step": 2,
+   "nll": 6.072892427444458,
+   "grad_norm": 32.77283477783203,
+   "nll_on_batch": 5.145697593688965,
+   "swap_gap_batch": null,
+   "time_s": 3.035921573638916,
+   "mem_gb": 4.548281344,
+   "mean_write_gate": 0.08345321728847921,
+   "retention_halflife_tokens": 3742.6365757339418,
+   "state_norm_ratio": 0.13862468302249908,
+   "mean_blend": 0.7003874555230141,
+   "mean_surprise": 0.7947372247775396,
+   "W_c_norm": 0.0026870055589824915,
+   "capped_sentence_share": 0.0,
+   "key_loss": 0.0
+  },
+  {
+   "step": 4,
+   "nll": 1.8546265959739685,
+   "grad_norm": 4.4600605964660645,
+   "nll_on_batch": 2.1271958351135254,
+   "swap_gap_batch": null,
+   "time_s": 3.866795539855957,
+   "mem_gb": 4.587613696,
+   "mean_write_gate": 0.08898155437782407,
+   "retention_halflife_tokens": 47869.83505955133,
+   "state_norm_ratio": 0.1115117222070694,
+   "mean_blend": 0.7033797148615122,
+   "mean_surprise": 0.449841745197773,
+   "W_c_norm": 0.009813166223466396,
+   "capped_sentence_share": 0.0,
+   "key_loss": 0.0
+  },
+  {
+   "step": 6,
+   "nll": 1.8453980088233948,
+   "grad_norm": 2.793820381164551,
+   "nll_on_batch": 2.192211151123047,
+   "swap_gap_batch": null,
+   "time_s": 5.911170959472656,
+   "mem_gb": 4.587613696,
+   "mean_write_gate": 0.1256872438825667,
+   "retention_halflife_tokens": 47201.61608145367,
+   "state_norm_ratio": 0.12160757929086685,
+   "mean_blend": 0.6459186635911465,
+   "mean_surprise": 0.6294040866196156,
+   "W_c_norm": 0.017562948167324066,
+   "capped_sentence_share": 0.0,
+   "key_loss": 0.0
+  },
+  {
+   "step": 8,
+   "nll": 1.8488860130310059,
+   "grad_norm": 4.031716346740723,
+   "nll_on_batch": 1.7715139389038086,
+   "swap_gap_batch": null,
+   "time_s": 6.740776538848877,
+   "mem_gb": 4.671463936,
+   "mean_write_gate": 0.13372625224292278,
+   "retention_halflife_tokens": 45194.27304521615,
+   "state_norm_ratio": 0.1338324248790741,
+   "mean_blend": 0.6791718527674675,
+   "mean_surprise": 0.5466002710163593,
+   "W_c_norm": 0.02405797690153122,
+   "capped_sentence_share": 0.11764705882352941,
+   "key_loss": 0.0
+  },
+  {
+   "step": 10,
+   "nll": 1.6591335535049438,
+   "grad_norm": 12.180179595947266,
+   "nll_on_batch": 1.4777811765670776,
+   "swap_gap_batch": null,
+   "time_s": 7.622482776641846,
+   "mem_gb": 4.671463936,
+   "mean_write_gate": 0.06602729787118733,
+   "retention_halflife_tokens": 22180698.68692369,
+   "state_norm_ratio": 0.1583927422761917,
+   "mean_blend": 0.5636102152722222,
+   "mean_surprise": 0.726489432156086,
+   "W_c_norm": 0.028231536969542503,
+   "capped_sentence_share": 0.0,
+   "key_loss": 1.688528299331665
+  },
+  {
+   "step": 12,
+   "nll": 1.915354073047638,
+   "grad_norm": 24.23467254638672,
+   "nll_on_batch": 1.646959662437439,
+   "swap_gap_batch": null,
+   "time_s": 8.720714092254639,
+   "mem_gb": 4.671463936,
+   "mean_write_gate": 0.07657146170580138,
+   "retention_halflife_tokens": 3740.592998363066,
+   "state_norm_ratio": 0.1393125057220459,
+   "mean_blend": 0.713178581247727,
+   "mean_surprise": 0.7372440161804358,
+   "W_c_norm": 0.030718768015503883,
+   "capped_sentence_share": 0.0,
+   "key_loss": 1.4370110034942627
+  }
+ ],
+ "quick_eval": [],
+ "final": {
+  "long_context": {
+   "n_val": 6,
+   "nll": {
+    "none": 3.6780192454655967,
+    "off": 2.705081601937612,
+    "swap": 3.2466867367426553,
+    "on": 0.9373434502631426,
+    "oracle": 0.5506679688890775
+   },
+   "ppl": {
+    "none": 39.56794202051935,
+    "off": 14.955537041534487,
+    "swap": 25.705031134819347,
+    "on": 2.5531897255950478,
+    "oracle": 1.7344111637198676
+   },
+   "nll_gain_on_vs_none": 2.740675795202454,
+   "nll_gain_on_vs_off": 1.7677381516744695,
+   "nll_gain_on_vs_swap": 2.3093432864795127,
+   "frac_gain_recovered": 0.8763568760982441,
+   "doc_specific_share": 0.8426181931193804,
+   "nll_by_n_segments": {
+    "5": {
+     "none": 3.61400043964386,
+     "off": 2.5026267766952515,
+     "swap": 3.1104625463485718,
+     "on": 0.8922060485929251,
+     "oracle": 0.5269488617777824,
+     "count": 2
+    },
+    "6": {
+     "none": 3.0653042793273926,
+     "off": 2.406560937563578,
+     "swap": 2.8180689811706543,
+     "on": 0.7390336990356445,
+     "oracle": 0.5284933646519979,
+     "count": 3
+    },
+    "7": {
+     "none": 5.644201755523682,
+     "off": 4.005553245544434,
+     "swap": 4.804988384246826,
+     "on": 1.6225475072860718,
+     "oracle": 0.6646299958229065,
+     "count": 1
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 2.924082358678182,
+     "off": 2.0814470847447715,
+     "swap": 2.5939791202545166,
+     "on": 0.633996669203043,
+     "oracle": 0.505525474747022,
+     "count": 3
+    },
+    "1024+": {
+     "none": 4.834266901016235,
+     "off": 3.5663912296295166,
+     "swap": 4.137148022651672,
+     "on": 1.3914670944213867,
+     "oracle": 0.7344214916229248,
+     "count": 2
+    },
+    "<256": {
+     "none": 3.6273345947265625,
+     "off": 2.853365898132324,
+     "swap": 3.423887014389038,
+     "on": 0.9391365051269531,
+     "oracle": 0.31858840584754944,
+     "count": 1
+    }
+   },
+   "nll_by_fact_position": {
+    "early": {
+     "none": 3.688156175613403,
+     "off": 2.6754247426986693,
+     "swap": 3.211246681213379,
+     "on": 0.9369848392903805,
+     "oracle": 0.5970838814973831,
+     "count": 5
+    },
+    "late": {
+     "none": 3.6273345947265625,
+     "off": 2.853365898132324,
+     "swap": 3.423887014389038,
+     "on": 0.9391365051269531,
+     "oracle": 0.31858840584754944,
+     "count": 1
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.04761904761904762,
+     "digit_recall": 0.0
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.2222222222222222,
+     "digit_recall": 0.16666666666666666
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.0,
+     "digit_recall": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "1809"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The desalination plant desperately needed to"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the chemical concentration reading"
+     }
+    ],
+    "on": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "October 14, 19"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "4,200 kilograms"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "03:14 AM"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "Elias Vogt was recognized for his service"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The specific part that the desalination"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the titanium dioxide reading"
+     }
+    ]
+   }
+  },
+  "dialogue": {
+   "n_val": 6,
+   "nll": {
+    "none": 2.4713574846585593,
+    "off": 2.22430286804835,
+    "swap": 2.311541179815928,
+    "on": 1.7769706149895985,
+    "oracle": 1.1090730081001918
+   },
+   "ppl": {
+    "none": 11.838506539798061,
+    "off": 9.247034153421561,
+    "swap": 10.08996312566202,
+    "on": 5.911919782648164,
+    "oracle": 3.0315468721134597
+   },
+   "nll_gain_on_vs_none": 0.6943868696689608,
+   "nll_gain_on_vs_off": 0.44733225305875135,
+   "nll_gain_on_vs_swap": 0.5345705648263295,
+   "frac_gain_recovered": 0.5097223682848078,
+   "doc_specific_share": 0.7698454394467144,
+   "nll_by_n_segments": {
+    "3": {
+     "none": 2.329048365354538,
+     "off": 2.0852555334568024,
+     "swap": 2.159127801656723,
+     "on": 1.7815721929073334,
+     "oracle": 1.2113628834486008,
+     "count": 4
+    },
+    "4": {
+     "none": 2.7559757232666016,
+     "off": 2.5023975372314453,
+     "swap": 2.6163679361343384,
+     "on": 1.767767459154129,
+     "oracle": 0.9044932574033737,
+     "count": 2
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 2.7100464344024657,
+     "off": 2.4188000202178954,
+     "swap": 2.5091591835021974,
+     "on": 1.9290691494941712,
+     "oracle": 1.2342229187488556,
+     "count": 5
+    },
+    "256-512": {
+     "none": 1.2779127359390259,
+     "off": 1.2518171072006226,
+     "swap": 1.3234511613845825,
+     "on": 1.0164779424667358,
+     "oracle": 0.48332345485687256,
+     "count": 1
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.3489683231618716,
+     "digit_recall": 0.0
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.3037992831541218,
+     "digit_recall": 0.0
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.34681003584229386,
+     "digit_recall": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a new car"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set up the system"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on a"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a 2"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to log in to the"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focused on a"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a 2"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set their ID for"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on Type"
+     }
+    ]
+   }
+  },
+  "agentic": {
+   "n_val": 6,
+   "nll": {
+    "none": 4.218058784802754,
+    "off": 2.707431217034658,
+    "swap": 2.8273807168006897,
+    "on": 2.084658225377401,
+    "oracle": 2.427365481853485
+   },
+   "ppl": {
+    "none": 67.901544758739,
+    "off": 14.990718111953484,
+    "swap": 16.901133941371487,
+    "on": 8.04184251427048,
+    "oracle": 11.32899628365962
+   },
+   "nll_gain_on_vs_none": 2.1334005594253536,
+   "nll_gain_on_vs_off": 0.6227729916572571,
+   "nll_gain_on_vs_swap": 0.7427224914232888,
+   "frac_gain_recovered": 1.191382441600494,
+   "doc_specific_share": 0.34814019718047995,
+   "nll_by_n_segments": {
+    "2": {
+     "none": 4.592412948608398,
+     "off": 2.760348320007324,
+     "swap": 2.9197068214416504,
+     "on": 2.0282912651697793,
+     "oracle": 2.666072130203247,
+     "count": 3
+    },
+    "3": {
+     "none": 3.843704620997111,
+     "off": 2.6545141140619912,
+     "swap": 2.735054612159729,
+     "on": 2.141025185585022,
+     "oracle": 2.188658833503723,
+     "count": 3
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 3.843704620997111,
+     "off": 2.6545141140619912,
+     "swap": 2.735054612159729,
+     "on": 2.141025185585022,
+     "oracle": 2.188658833503723,
+     "count": 3
+    },
+    "256-512": {
+     "none": 4.592412948608398,
+     "off": 2.760348320007324,
+     "swap": 2.9197068214416504,
+     "on": 2.0282912651697793,
+     "oracle": 2.666072130203247,
+     "count": 3
+    }
+   },
+   "pref_acc": {
+    "none": 0.6666666666666666,
+    "off": 0.8333333333333334,
+    "swap": 0.8333333333333334,
+    "on": 0.8333333333333334,
+    "oracle": 0.8333333333333334
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.16566113624937154,
+     "digit_recall": 0.0
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.15528985507246376,
+     "digit_recall": 0.0
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.19130216189039717,
+     "digit_recall": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to continue with the"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the process"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue the process"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "Execute the python script using the specific '"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "Use the original primary dataset ID 'd"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "Execute the script using the '--no-"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to release the lock"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the backup"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue with the"
+     }
+    ]
+   }
+  }
+ },
+ "skipped_nonfinite_steps": 0,
+ "train_time_s": 8.721221446990967,
+ "wall_time_s": 35.592910289764404,
+ "peak_gpu_gb": 4.671463936,
+ "versions": {
+  "torch": "2.15.0+cu132",
+  "transformers": "5.22.2"
+ }
+}

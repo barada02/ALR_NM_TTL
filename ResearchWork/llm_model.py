@@ -23,7 +23,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from llm_config import LLMConfig
-from memory_module_v4 import MemoryConfig, MiniTitanMemoryModule
+from memory_module_v4 import MemoryConfig, MiniTitanMemoryModule, sentence_ids_from_closes
 
 
 class SegmentedMemoryLM(nn.Module):
@@ -48,7 +48,11 @@ class SegmentedMemoryLM(nn.Module):
             mode=cfg.mem_mode, tbptt_chunks=cfg.tbptt_chunks or None, inner_lr=cfg.inner_lr,
             inner_clip=cfg.inner_clip, use_momentum=cfg.use_momentum, second_order=cfg.second_order,
             retention_bias=cfg.retention_bias, retention_learned=cfg.retention_learned, input_norm=True,
-            shift_v=cfg.shift_v)).float()
+            shift_v=cfg.shift_v, key_mode=cfg.key_mode, pool=cfg.pool, read_cap=cfg.read_cap,
+            mask_cross_pair=cfg.mask_cross_pair)).float()
+        self.last_seg_share = 0.0
+        if cfg.key_mode == "composite":
+            self._build_boundary_tables(lm.config.vocab_size)
 
         if cfg.insert == "last":
             target = lm.model.norm
@@ -60,6 +64,38 @@ class SegmentedMemoryLM(nn.Module):
         target.register_forward_hook(self._hook)
         self._ctx = None
         self.last_met, self.last_aux = {}, None
+
+    def _build_boundary_tables(self, vocab_size: int):
+        """Sentence segmentation with NO annotations (DESIGN_ENTITY_KEYS.md §3): a token closes a sentence if its text contains a
+        newline, or ends in . ! ? and the NEXT token starts with whitespace / newline (keeps "4.2", "v1.2" whole)."""
+        from transformers import AutoTokenizer
+        tok = AutoTokenizer.from_pretrained(self.cfg.base_model)
+        V = max(vocab_size, len(tok))
+        is_end = torch.zeros(V, dtype=torch.bool)
+        is_nl = torch.zeros(V, dtype=torch.bool)
+        starts_ws = torch.zeros(V, dtype=torch.bool)
+        for i in range(len(tok)):
+            t = tok.decode([i])
+            if not t:
+                continue
+            is_nl[i] = "\n" in t
+            st = t.rstrip(" \t")
+            is_end[i] = len(st) > 0 and st[-1] in ".!?"
+            starts_ws[i] = t[0] in " \n\t"
+        self.register_buffer("_b_end", is_end, persistent=False)
+        self.register_buffer("_b_nl", is_nl, persistent=False)
+        self.register_buffer("_b_ws", starts_ws, persistent=False)
+
+    def sentence_ids(self, flat_ids: torch.Tensor, valid: torch.Tensor = None):
+        nxt = torch.cat([flat_ids[:, 1:], flat_ids[:, -1:]], 1)
+        close = self._b_nl[flat_ids] | (self._b_end[flat_ids] & self._b_ws[nxt])
+        close[:, -1] = close[:, -1] | self._b_end[flat_ids[:, -1]]
+        if valid is not None:
+            # padding (left of the context, right of the question) is never part of a real sentence: every padding token
+            # is its own sentence, and the token before real text starts closes the padding run
+            close = close | ~valid
+            close[:, :-1] = close[:, :-1] | (~valid[:, :-1] & valid[:, 1:])
+        return sentence_ids_from_closes(close, cap=64, valid=valid)
 
     # keep the frozen LM in eval mode no matter what
     def train(self, mode: bool = True):
@@ -83,19 +119,32 @@ class SegmentedMemoryLM(nn.Module):
         x = h.float().reshape(B, (BN // B) * S, d)
         write = ctx["write"] if ctx["mode"] == "on" else torch.zeros_like(ctx["write"])
         self.memory.reset_memory()
-        out, met, aux = self.memory(x, write_mask=write)
+        kw = {}
+        if "sent_ids" in ctx:
+            kw = {"sent_ids": ctx["sent_ids"], "pool_mask": ctx.get("pool_mask"), "keyloss": ctx.get("keyloss")}
+        out, met, aux = self.memory(x, write_mask=write, **kw)
         self.last_met, self.last_aux = met, aux
         out = out.to(h.dtype).reshape(BN, S, d)
         return (out,) + tuple(output[1:]) if is_tuple else out
 
     # ── segmented forward ─────────────────────────────────────────────────────
 
-    def question_hidden(self, ids: torch.Tensor, write: torch.Tensor, mode: str) -> torch.Tensor:
-        """ids (B, n+1, S) → final-layer hidden of the question segment (B, S, d)."""
+    def question_hidden(self, ids: torch.Tensor, write: torch.Tensor, mode: str, extra=None) -> torch.Tensor:
+        """ids (B, n+1, S) → final-layer hidden of the question segment (B, S, d).
+        extra (composite keys only): the batch dict, for the oracle pool mask and the auxiliary key-loss positions."""
         B, n1, S = ids.shape
         flat = ids.reshape(B * n1, S)
         pos = torch.arange(S, device=ids.device).unsqueeze(0).expand(B * n1, S)   # each segment restarts at 0
         self._ctx = {"mode": mode, "B": B, "write": write}
+        if self.cfg.key_mode == "composite":
+            sid, share = self.sentence_ids(ids.reshape(B, n1 * S), valid=(write > 0))
+            self.last_seg_share = share
+            self._ctx["sent_ids"] = sid
+            if extra is not None and "pool_mask" in extra:
+                self._ctx["pool_mask"] = extra["pool_mask"]
+                if mode == "on" and self.cfg.key_loss_weight > 0 and "kl_q" in extra:
+                    self._ctx["keyloss"] = {"q": extra["kl_q"], "cands": extra["kl_cands"], "cmask": extra["kl_cmask"],
+                                            "has": extra["kl_has"]}
         try:
             h = self.lm.model(input_ids=flat, position_ids=pos, use_cache=False).last_hidden_state
         finally:
@@ -118,12 +167,19 @@ class SegmentedMemoryLM(nn.Module):
         n, S = ids.shape[1] - 1, ids.shape[2]
         ids[:, :n] = ids[:, :n].roll(1, dims=0)
         write[:, :n * S] = write[:, :n * S].roll(1, dims=0)
-        return {**b, "ids": ids, "write": write}
+        out = {**b, "ids": ids, "write": write}
+        if "pool_mask" in b:
+            pm = b["pool_mask"].clone()
+            pm[:, :n * S] = pm[:, :n * S].roll(1, dims=0)
+            out["pool_mask"] = pm
+        for k_ in ("kl_q", "kl_cands", "kl_cmask", "kl_has"):     # the key loss never runs on a swapped document
+            out.pop(k_, None)
+        return out
 
     def answer_logp(self, b, mode: str) -> torch.Tensor:
         if mode == "swap":
             b, mode = self.swap_context(b), "on"
-        h = self.question_hidden(b["ids"], b["write"], mode)
+        h = self.question_hidden(b["ids"], b["write"], mode, extra=b)
         return self._token_logp(h, b)
 
     def oracle_logp(self, b, adapter: bool = False) -> torch.Tensor:
@@ -152,7 +208,7 @@ class SegmentedMemoryLM(nn.Module):
         done = torch.zeros(B, dtype=torch.bool, device=ids.device)
         toks = [[] for _ in range(B)]
         for _ in range(max_new):
-            hq = self.question_hidden(ids, write, mode)
+            hq = self.question_hidden(ids, write, mode, extra=b)
             last = hq[torch.arange(B, device=ids.device), (cur - 1).clamp(min=0)]
             nxt = self.lm.lm_head(last).argmax(-1)
             for i in range(B):

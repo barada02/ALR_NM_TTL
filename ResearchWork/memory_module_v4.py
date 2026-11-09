@@ -63,6 +63,13 @@ class MemoryConfig:
     use_momentum: bool = True
     momentum_bias: float = 1.0       # σ(1)=0.73 at init
     second_order: bool = True        # meta-gradients through the inner update
+    # v5 entity-keyed memory (research_archive/DESIGN_ENTITY_KEYS.md). key_mode="token" is the unchanged v4 path.
+    key_mode: str = "token"          # "token" | "composite" (local token part + sentence-pooled context part; Mode B only)
+    pool: str = "attn"               # composite context pool: "mean" | "attn" | "oracle" (gold spans via pool_mask; diagnostic only)
+    read_cap: int = 64               # read context = previous + current sentence, at most this many tokens IN TOTAL
+    mask_cross_pair: bool = True     # do not write the pair (last token of a sentence -> first token of the next sentence)
+    sentence_close_writes: bool = True   # False is ONLY for the W_c = 0 key-path unit test (it would leak future tokens otherwise)
+    key_loss_tau: float = 0.1        # temperature of the optional auxiliary key loss
     # Mode A
     aux_lag_chunks: int = 4          # delayed aux reads the oldest of the last N chunks; 0 disables
     head_init: float = 0.03          # target std of a single token's U/V entries at init
@@ -229,6 +236,17 @@ class MiniTitanMemoryModule(nn.Module):
             nn.init.normal_(self.momentum_gate.weight, std=1e-3)
             nn.init.constant_(self.momentum_gate.bias, cfg.momentum_bias)
 
+        if cfg.key_mode == "composite":
+            assert cfg.mode == "B" and cfg.shift_v and cfg.input_norm, "composite keys are defined for Mode B with shift_v and input_norm"
+            self.W_c = nn.Linear(d, d, bias=False)            # context part of BOTH keys; zero-init → keys start as v4's
+            nn.init.zeros_(self.W_c.weight)
+            if cfg.pool == "attn":
+                self.pool_proj = nn.Linear(d, 64, bias=False)
+                self.pool_u = nn.Linear(64, 1, bias=False)
+                nn.init.normal_(self.pool_u.weight, std=0.02)
+        else:
+            assert cfg.key_mode == "token"
+
         self._delta: Optional[State] = None
         self._mom: Optional[State] = None
 
@@ -321,7 +339,10 @@ class MiniTitanMemoryModule(nn.Module):
     # ── Forward ───────────────────────────────────────────────────────────────
 
     def forward(self, hidden: torch.Tensor, write_mask: Optional[torch.Tensor] = None,
-                update_memory: bool = True) -> Tuple[torch.Tensor, Dict, torch.Tensor]:
+                update_memory: bool = True, sent_ids: Optional[torch.Tensor] = None,
+                pool_mask: Optional[torch.Tensor] = None, keyloss: Optional[Dict] = None) -> Tuple[torch.Tensor, Dict, torch.Tensor]:
+        if self.cfg.key_mode == "composite":
+            return self._forward_composite(hidden, write_mask, update_memory, sent_ids, pool_mask, keyloss)
         cfg = self.cfg
         B, T, d = hidden.shape
         self._ensure_state(B, hidden)
@@ -406,6 +427,186 @@ class MiniTitanMemoryModule(nn.Module):
         }
         return out, metrics, aux
 
+    # ── v5: composite (entity-keyed) path ─────────────────────────────────────
+    def _pool_logits(self, hn: torch.Tensor) -> torch.Tensor:
+        if self.cfg.pool == "attn":
+            return self.pool_u(torch.tanh(self.pool_proj(hn))).squeeze(-1)          # (B,T)
+        return hn.new_zeros(hn.shape[:2])                                         # mean / oracle: uniform weights
+
+    @staticmethod
+    def _masked_pool(logits: torch.Tensor, hb: torch.Tensor, allow: torch.Tensor) -> torch.Tensor:
+        """logits (B,L), hb (B,L,d), allow (B,Q,L) bool → softmax-weighted pool (B,Q,d); a row with nothing allowed → 0."""
+        lg = logits.unsqueeze(1).expand(-1, allow.shape[1], -1)
+        lg = lg.masked_fill(~allow, -1e4)
+        w = torch.softmax(lg, dim=-1) * allow.to(hb.dtype)
+        w = w / w.sum(-1, keepdim=True).clamp(min=1e-9)
+        return torch.bmm(w, hb)
+
+    @staticmethod
+    def _restrict(allow: torch.Tensor, om: Optional[torch.Tensor]) -> torch.Tensor:
+        """oracle: keep only gold-span tokens when the span contains any, otherwise fall back to the full span."""
+        if om is None:
+            return allow
+        ra = allow & om.unsqueeze(1)
+        return torch.where(ra.any(-1, keepdim=True), ra, allow)
+
+    def _chunk_B2(self, hw, k_r, k_w, v_w, m_w, rho, h_mean, update_memory):
+        """Mode B with TWO keys: the output read uses k_r; the inner loss / ΔW update uses the write pairs (k_w → v_w)."""
+        outer_grad = torch.is_grad_enabled() and self.training
+        create = outer_grad and self.cfg.second_order
+        with torch.enable_grad():
+            leaves = [d if d.requires_grad else d.detach().requires_grad_(True) for d in self._delta]
+            read = self.memory(k_r, leaves)
+            read_w = self.memory(k_w, leaves)
+            mse = (read_w - v_w).pow(2).mean(-1)
+            gate = self.surprise_gate(hw, mse) * m_w
+            if update_memory:
+                inner = (gate.squeeze(-1) * self.cfg.inner_lr * mse).sum()
+                grads = torch.autograd.grad(inner, leaves, create_graph=create, retain_graph=True)
+                grads = [self._clip_step(g, lin.weight) for g, lin in zip(grads, self.memory.linears)]
+            else:
+                grads = None
+        if not outer_grad:
+            read, mse, gate = read.detach(), mse.detach(), gate.detach()
+        if not update_memory:
+            return read, mse, gate, self._delta, self._mom
+        r = rho.unsqueeze(-1)
+        if self.cfg.use_momentum:
+            eta = torch.sigmoid(self.momentum_gate(h_mean)).unsqueeze(-1)
+            new_mom = [eta * s_ - g for s_, g in zip(self._mom, grads)]
+        else:
+            new_mom = [-g for g in grads]
+        new_delta = [r * d + s_ for d, s_ in zip(self._delta, new_mom)]
+        return read, mse, gate, new_delta, new_mom
+
+    def _forward_composite(self, hidden, write_mask, update_memory, sent_ids, pool_mask, keyloss):
+        cfg = self.cfg
+        assert sent_ids is not None, "composite keys need per-position sentence ids"
+        if not cfg.sentence_close_writes:
+            assert float(self.W_c.weight.detach().abs().sum()) == 0.0, \
+                "buffering-disabled mode is a W_c = 0 unit test only; with W_c != 0 it would leak future tokens"
+        B, T, d = hidden.shape
+        C = cfg.chunk_size
+        dev = hidden.device
+        self._ensure_state(B, hidden)
+        self.detach_state()
+
+        hn = rms_norm(hidden)
+        valid = torch.ones(B, T, dtype=torch.bool, device=dev) if write_mask is None else (write_mask > 0)
+        sid = sent_ids.to(dev).long()
+        pos = torch.arange(T, device=dev).unsqueeze(0).expand(B, T)
+        nS = int(sid.max().item()) + 1
+        end_of = torch.full((B, nS), -1, dtype=torch.long, device=dev).scatter_reduce(1, sid, pos, "amax")
+        start_of = torch.full((B, nS), T, dtype=torch.long, device=dev).scatter_reduce(1, sid, pos, "amin")
+        tok_end, tok_start = end_of.gather(1, sid), start_of.gather(1, sid)
+        prev_start = start_of.gather(1, (sid - 1).clamp(min=0))
+        read_lo = torch.maximum(prev_start, pos - (cfg.read_cap - 1)).clamp(min=0)   # ≤ read_cap tokens in total
+        valid_next = torch.cat([valid[:, 1:], torch.zeros_like(valid[:, :1])], 1)
+        w_ok = valid & valid_next
+        if cfg.mask_cross_pair:
+            w_ok = w_ok & (pos != tok_end)
+        close_at = torch.where(tok_end + 1 < T, tok_end + 1, tok_end)                 # boundary-confirming lookahead token
+        write_chunk = (close_at // C) if cfg.sentence_close_writes else (pos // C)
+        om = None if (pool_mask is None or cfg.pool != "oracle") else (pool_mask.to(dev) > 0)
+
+        logits = self._pool_logits(hn)
+        l_all = self.kv.W_k(hn)                                                       # local part (v4's key before RMSNorm)
+        hn_next = torch.cat([hn[:, 1:], hn[:, -1:]], 1)
+        v_all = rms_norm(self.kv.W_v(hn_next))                                        # next-token values (shift_v)
+        back = max(cfg.read_cap, 64)                                                  # sentences are ≤ 64 tokens (segmentation cap)
+
+        cap = getattr(self, "capture", None)
+        need_full = cap is not None or keyloss is not None
+        outs, kr_list, kw_rows = [], [], []
+        stats = {"surprise": [], "write_gate": [], "retention": [], "blend": []}
+        cap_lists = {n_: [] for n_ in ("h", "k", "v", "read", "blend")} if cap is not None else None
+        written = torch.zeros(B, T, device=dev) if cap is not None else None
+        gate_full = torch.zeros(B, T, 1, device=dev) if cap is not None else None
+        since_detach = 0
+        for ci, s0 in enumerate(range(0, T, C)):
+            e0 = min(s0 + C, T)
+            lo = max(0, s0 - back)
+            L = e0 - lo
+            jpos = torch.arange(lo, e0, device=dev)
+            hb, lb, vb = hn[:, lo:e0], logits[:, lo:e0], valid[:, lo:e0]
+            om_b = None if om is None else om[:, lo:e0]
+            # read key: pool over [read_lo(p), p] — never a token > p
+            pr = torch.arange(s0, e0, device=dev)
+            allow_r = (jpos.view(1, 1, L) >= read_lo[:, s0:e0].unsqueeze(-1)) & (jpos.view(1, 1, L) <= pr.view(1, -1, 1)) & vb.unsqueeze(1)
+            c_r = rms_norm(self._masked_pool(lb, hb, self._restrict(allow_r, om_b)))
+            k_r = rms_norm(l_all[:, s0:e0] + self.W_c(c_r))
+            # write keys: whole-sentence pool, for the tokens whose sentence closes in this chunk
+            allow_w = (jpos.view(1, 1, L) >= tok_start[:, lo:e0].unsqueeze(-1)) & (jpos.view(1, 1, L) <= tok_end[:, lo:e0].unsqueeze(-1)) \
+                & vb.unsqueeze(1)
+            c_w = rms_norm(self._masked_pool(lb, hb, self._restrict(allow_w, om_b)))
+            k_w = rms_norm(l_all[:, lo:e0] + self.W_c(c_w))
+            wsel = (write_chunk[:, lo:e0] == ci) & w_ok[:, lo:e0]
+            if not cfg.sentence_close_writes:
+                wsel = wsel & (jpos.view(1, L) >= s0)
+            m_w = wsel.to(hn.dtype).unsqueeze(-1)
+            h_mean = hn[:, s0:e0].mean(dim=1)
+            rho = self.retention_gate(h_mean)
+            read, mse_w, gate_w, new_delta, new_mom = self._chunk_B2(hb, k_r, k_w, v_all[:, lo:e0], m_w,
+                                                                     rho, h_mean, update_memory)
+            blend = self.blend_gate(hn[:, s0:e0], read)
+            outs.append(hidden[:, s0:e0] + blend * self.W_o(read))
+            if update_memory:
+                self._delta, self._mom = new_delta, new_mom
+                since_detach += 1
+                if cfg.tbptt_chunks and since_detach >= cfg.tbptt_chunks:
+                    self.detach_state()
+                    since_detach = 0
+            nw = m_w.sum().clamp(min=1)
+            stats["surprise"].append((mse_w.detach() * m_w.squeeze(-1)).sum() / nw)
+            stats["write_gate"].append((gate_w.detach()).sum() / nw)
+            stats["retention"].append(rho.detach().mean())
+            stats["blend"].append(blend.detach().mean())
+            if need_full:
+                kr_list.append(k_r)
+                bi, ti = torch.nonzero(wsel, as_tuple=True)
+                kw_rows.append((bi, ti + lo, k_w[bi, ti]))
+            if cap is not None:
+                for n_, t_ in (("h", hn[:, s0:e0]), ("k", k_r), ("v", v_all[:, s0:e0]), ("read", read), ("blend", blend)):
+                    cap_lists[n_].append(t_.detach())
+                written[:, lo:e0] += wsel.to(written.dtype)
+                gate_full[:, lo:e0] += gate_w.detach()
+
+        out = torch.cat(outs, dim=1)
+        aux = hidden.new_zeros(())
+        if need_full:
+            Kr = torch.cat(kr_list, dim=1)
+            bi = torch.cat([r[0] for r in kw_rows]) if kw_rows else torch.zeros(0, dtype=torch.long, device=dev)
+            ti = torch.cat([r[1] for r in kw_rows]) if kw_rows else torch.zeros(0, dtype=torch.long, device=dev)
+            vals = torch.cat([r[2] for r in kw_rows]) if kw_rows else hidden.new_zeros(0, d)
+            Kw = hidden.new_zeros(B, T, d).index_put((bi, ti), vals)
+            if keyloss is not None and bool(keyloss["has"].any()):
+                q, cands, cm, has = keyloss["q"].to(dev), keyloss["cands"].to(dev), keyloss["cmask"].to(dev), keyloss["has"].to(dev)
+                kq = Kr[torch.arange(B, device=dev), q]                                        # (B,d)
+                kc = Kw[torch.arange(B, device=dev).unsqueeze(1), cands]                       # (B,K,d)
+                lg = F.cosine_similarity(kq.unsqueeze(1), kc, dim=-1) / cfg.key_loss_tau
+                lg = lg.masked_fill(~cm, -1e4)
+                ce = F.cross_entropy(lg[has], torch.zeros(int(has.sum()), dtype=torch.long, device=dev))
+                aux = ce
+            if cap is not None:
+                cap.update({n_: torch.cat(t_, dim=1) for n_, t_ in cap_lists.items()})
+                cap.update({"kw": Kw.detach(), "written": written, "gate": gate_full, "writable": w_ok.to(written.dtype)})
+
+        per_chunk = {k_: torch.stack(v_).tolist() for k_, v_ in stats.items()}
+        mean_ret = sum(per_chunk["retention"]) / len(per_chunk["retention"])
+        med_ret = sorted(per_chunk["retention"])[len(per_chunk["retention"]) // 2]
+        metrics = {
+            "mode": "B-composite",
+            "mean_surprise": sum(per_chunk["surprise"]) / len(per_chunk["surprise"]),
+            "mean_write_gate": sum(per_chunk["write_gate"]) / len(per_chunk["write_gate"]),
+            "mean_retention": mean_ret,
+            "mean_blend": sum(per_chunk["blend"]) / len(per_chunk["blend"]),
+            "retention_halflife_tokens": cfg.chunk_size * math.log(0.5) / math.log(max(min(med_ret, 1 - 1e-6), 1e-6)),
+            "state_norm_ratio": self.state_norm_ratio(),
+            "W_c_norm": float(self.W_c.weight.detach().norm()),
+            "per_chunk": per_chunk,
+        }
+        return out, metrics, aux
+
     @staticmethod
     def _masked_mse(pred, target, m):
         e = (pred - target).pow(2).mean(-1)                                  # (B,c)
@@ -413,6 +614,26 @@ class MiniTitanMemoryModule(nn.Module):
             return e.mean()
         w = m.squeeze(-1)
         return (e * w).sum() / (w.sum() + 1e-6)
+
+
+def sentence_ids_from_closes(close: torch.Tensor, cap: int = 64, valid: Optional[torch.Tensor] = None):
+    """close (B,T) bool: True where a token ENDS a sentence. Returns (sent_ids (B,T) long, capped_share float).
+    Runs longer than `cap` tokens are closed every `cap` tokens (the share of such forced closes is reported)."""
+    close = close.clone()
+    B, T = close.shape
+    sid = torch.cumsum(close.long(), 1) - close.long()
+    pos = torch.arange(T, device=close.device).unsqueeze(0).expand(B, T)
+    big = torch.full_like(sid, T)
+    start = big.scatter_reduce(1, sid, pos, "amin").gather(1, sid)
+    forced = ((pos - start) % cap == cap - 1) & ~close
+    close2 = close | forced
+    sid2 = torch.cumsum(close2.long(), 1) - close2.long()
+    if valid is None:
+        n_sent = int(close2.sum()) + B
+        return sid2, float(forced.sum()) / max(n_sent, 1)
+    # share over REAL text only: padding must not count (each padding token is its own sentence upstream)
+    n_sent = sum(int(torch.unique(sid2[b][valid[b]]).numel()) for b in range(B))
+    return sid2, float((forced & valid).sum()) / max(n_sent, 1)
 
 
 # ── Sanity checks (preserve + extend these when changing the module) ──────────
@@ -572,6 +793,81 @@ def _run_checks():
         assert torch.equal(o_ref, o_cap), "capture changed the output"
         assert all(cap[n_].shape[:2] == (B, T) for n_ in ("h", "k", "v", "read", "gate", "blend"))
     print("6d. probe capture: shapes OK, output unchanged            OK")
+
+    # 10. v5 entity-keyed (composite) path — each check verifies a mechanism stated in DESIGN_ENTITY_KEYS.md
+    Tc = 96
+    close = torch.rand(B, Tc) < 0.12
+    sids, _ = sentence_ids_from_closes(close, cap=64)
+    ends = [(sids[b] == k_).nonzero().flatten() for b in range(B) for k_ in sids[b].unique()]
+    assert any(int(e_[0]) // C != int(e_[-1]) // C for e_ in ends), "test needs a sentence that crosses a chunk boundary"
+    # 10a. key path (Correction 1, scoped): W_c = 0, buffering disabled, cross mask off == token-keyed Mode B
+    tokm = mk("B", shift_v=True, input_norm=True)
+    nn.init.normal_(tokm.W_o.weight, std=0.1)
+    comp = mk("B", shift_v=True, input_norm=True, key_mode="composite", pool="attn", sentence_close_writes=False, mask_cross_pair=False)
+    missing, unexpected = comp.load_state_dict(tokm.state_dict(), strict=False)
+    assert not unexpected and all(k_.startswith(("W_c", "pool_")) for k_ in missing), (missing, unexpected)
+    tokm.eval(); comp.eval()
+    h0 = torch.randn(B, Tc, d)
+    tokm.reset_memory(); o_tok, _, _ = tokm(h0)
+    comp.reset_memory(); o_cmp, _, _ = comp(h0, sent_ids=sids)
+    assert torch.allclose(o_tok, o_cmp, atol=1e-5), float((o_tok - o_cmp).abs().max())
+    try:                                                    # the unit-test mode must refuse W_c != 0
+        nn.init.normal_(comp.W_c.weight, std=0.1); comp.reset_memory(); comp(h0, sent_ids=sids)
+        raise RuntimeError("buffering-disabled mode accepted W_c != 0")
+    except AssertionError:
+        pass
+    print("10a. v5 key path: W_c=0 + no buffering == token-keyed Mode B; refuses W_c!=0   OK")
+    # 10b. causality with W_c != 0, attention pool, sentence-close writes, cross mask on
+    comp2 = mk("B", shift_v=True, input_norm=True, key_mode="composite", pool="attn")
+    nn.init.normal_(comp2.W_o.weight, std=0.1); nn.init.normal_(comp2.W_c.weight, std=0.1)
+    comp2.eval()
+    q = 3 * C + 2
+    h1 = h0.clone(); h1[:, q] += 5.0 * torch.randn(B, d)
+    comp2.reset_memory(); o0, _, _ = comp2(h0, sent_ids=sids)
+    comp2.reset_memory(); o1, _, _ = comp2(h1, sent_ids=sids)
+    assert torch.allclose(o0[:, :q], o1[:, :q], atol=1e-5), "v5 output leaks a future hidden state"
+    assert not torch.allclose(o0[:, q:], o1[:, q:], atol=1e-5)
+    close2 = close.clone(); close2[:, q + 1:] = ~close2[:, q + 1:]
+    sids2, _ = sentence_ids_from_closes(close2, cap=64)
+    comp2.reset_memory(); o2, _, _ = comp2(h0, sent_ids=sids2)
+    assert torch.allclose(o0[:, :q + 1], o2[:, :q + 1], atol=1e-5), "v5 output depends on a sentence boundary after p"
+    print("10b. v5 causality: outputs at p unaffected by hidden > p and by boundaries > p   OK")
+    # 10c. write-once (incl. sentences crossing chunk boundaries); masked tokens never written
+    comp2.capture = {}
+    comp2.reset_memory(); comp2(h0, sent_ids=sids)
+    cp = comp2.capture
+    comp2.capture = None
+    assert torch.equal(cp["written"], cp["writable"]), "a writable token was written != 1 times, or a masked one was written"
+    assert cp["kw"].shape == (B, Tc, d) and cp["k"].shape == (B, Tc, d)
+    print(f"10c. v5 write-once: {int(cp['written'].sum())} pairs written exactly once, masked pairs never   OK")
+    # 10d. gradient reaches W_c from the task loss at W_c = 0; auxiliary key loss is differentiable
+    comp3 = mk("B", shift_v=True, input_norm=True, key_mode="composite", pool="attn")
+    nn.init.normal_(comp3.W_o.weight, std=0.1)
+    comp3.train(); comp3.reset_memory()
+    kl = {"q": torch.full((B,), Tc - 2), "cands": torch.tensor([[20, 40, 60]] * B), "cmask": torch.ones(B, 3, dtype=torch.bool),
+          "has": torch.ones(B, dtype=torch.bool)}
+    o3, _, aux3 = comp3(torch.randn(B, Tc, d), sent_ids=sids, keyloss=kl)
+    assert aux3.grad_fn is not None and math.isfinite(float(aux3))
+    (o3[:, C:].pow(2).mean() + 0.1 * aux3).backward()
+    assert comp3.W_c.weight.grad is not None and comp3.W_c.weight.grad.abs().sum() > 0, "no gradient to W_c at W_c = 0"
+    print(f"10d. v5 gradient reaches W_c at W_c=0; key loss differentiable ({float(aux3):.3f})   OK")
+    # 10e. oracle pool = masked mean over gold tokens; falls back to the full span when the span has none
+    lg = torch.zeros(1, 6); hb = torch.randn(1, 6, d)
+    om_ = torch.tensor([[False, True, True, False, False, False]])
+    allow = torch.ones(1, 1, 6, dtype=torch.bool)
+    pooled = MiniTitanMemoryModule._masked_pool(lg, hb, MiniTitanMemoryModule._restrict(allow, om_))
+    assert torch.allclose(pooled[0, 0], hb[0, 1:3].mean(0), atol=1e-6)
+    allow2 = torch.zeros(1, 1, 6, dtype=torch.bool); allow2[0, 0, 3:] = True
+    pooled2 = MiniTitanMemoryModule._masked_pool(lg, hb, MiniTitanMemoryModule._restrict(allow2, om_))
+    assert torch.allclose(pooled2[0, 0], hb[0, 3:].mean(0), atol=1e-6)
+    print("10e. v5 oracle pool: masked mean over gold tokens, full-span fallback   OK")
+    # 10f. segmentation cap: no sentence longer than the cap; forced-close share reported
+    sids3, share = sentence_ids_from_closes(torch.zeros(1, 200, dtype=torch.bool), cap=64)
+    lens = torch.bincount(sids3[0])
+    assert int(lens.max()) <= 64 and share > 0
+    sids4, share4 = sentence_ids_from_closes(close, cap=64)
+    print(f"10f. v5 segmentation: max sentence {int(lens.max())} tokens (cap 64); forced-close share {share:.2f} (no-punctuation run), "
+          f"{share4:.2f} (normal text)   OK")
 
     # 7. Mode B one-shot write: re-reading identical keys after a write lowers surprise
     mod = mk("B")

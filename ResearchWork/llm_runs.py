@@ -120,6 +120,35 @@ def stage2() -> List[LLMConfig]:
     return out
 
 
+V5_INIT = "/vol/llm/b_full_s0/b_full_s0_memory.pt"          # model v1 = Stage B seed 0
+
+
+def _v5_base(**kw) -> LLMConfig:
+    """E15 arms (DESIGN_ENTITY_KEYS.md §7): warm start from model v1, Stage 2 mixture, 3000 steps, lr 3e-4, full BPTT, chunk 32."""
+    base = dict(steps=3000, eval_every=1000, warmup=100, insert="mid", tbptt_chunks=0, lr=3e-4, shift_v=True, crop=True,
+                val_per_type=300, gen_eval_per_type=100, types=",".join(GEM + PROG), eval_types=",".join(GEM),
+                mix=_mix(0.50, 0.25, 0.15, 0.10), init_ckpt=V5_INIT, abort_step=1000, abort_min_gain=1.0, ckpt_steps="2000")
+    base.update(kw)
+    return LLMConfig(**base)
+
+
+def v5_screen() -> List[LLMConfig]:
+    return [_v5_base(run_name="v5_A1_s0", key_mode="composite", pool="mean"),
+            _v5_base(run_name="v5_A2_s0", key_mode="composite", pool="attn"),
+            _v5_base(run_name="v5_A3_s0", key_mode="composite", pool="attn", key_loss_weight=0.1),
+            _v5_base(run_name="v5_D_s0", key_mode="composite", pool="oracle"),
+            _v5_base(run_name="v5_R_s0", key_mode="token")]
+
+
+def v5_smoke() -> List[LLMConfig]:
+    """Plumbing only: a few steps of each composite variant (incl. oracle masks and the key loss) and the token reference."""
+    tiny = dict(steps=12, log_every=2, eval_every=10 ** 9, val_per_type=6, gen_eval_per_type=3, batch_size=2, gen_max_new=8,
+                save_ckpt=False, abort_step=6, abort_min_gain=-100.0, ckpt_steps="")
+    return [_v5_base(run_name="v5smoke_A3", key_mode="composite", pool="attn", key_loss_weight=0.1, **tiny),
+            _v5_base(run_name="v5smoke_D", key_mode="composite", pool="oracle", **tiny),
+            _v5_base(run_name="v5smoke_R", key_mode="token", **tiny)]
+
+
 def fix_b() -> List[LLMConfig]:
     """Root-cause test: same-position (k_t, v_t) cannot store a multi-token string → next-token values (shift_v).
     Success = `on` NLL clearly BELOW the generic adapter (long_context 2.15) and exact-match recall > 0, not just swap→on."""
@@ -132,7 +161,8 @@ def fix_b() -> List[LLMConfig]:
 
 
 RUNS = {"smoke": smoke, "gate2a": gate2a, "full_a": full_a, "fix_smoke": fix_smoke, "fix_a": fix_a, "fix_b": fix_b,
-        "fix_c": fix_c, "final_b": final_b, "paired_ctl": paired_ctl, "fix_d": fix_d, "stage2": stage2}
+        "fix_c": fix_c, "final_b": final_b, "paired_ctl": paired_ctl, "fix_d": fix_d, "stage2": stage2,
+        "v5_screen": v5_screen, "v5_smoke": v5_smoke}
 
 
 def build_runs(name: str) -> List[LLMConfig]:

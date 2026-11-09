@@ -24,6 +24,40 @@ from typing import Dict, List, Optional
 from llm_config import LLMConfig
 
 PROMPT = "\n\nQuestion: {q}\nAnswer:"
+DEVICES = ["flow meter", "pressure sensor", "compressor", "cooling pump", "control valve", "generator", "transformer", "gearbox"]
+
+
+def _span_tokens(offsets, a, b, limit):
+    return [i for i, (s_, e_) in enumerate(offsets) if e_ > a and s_ < b and i < limit]
+
+
+def annotation_tokens(tok, ex, ctx_ids, prompt_ids):
+    """Programmatic documents only: token indices of entity mentions in the context and the question, and of the first token of each
+    candidate value ([answer] + distractors). Used ONLY by the oracle arm D (pool mask) and the auxiliary key loss (training signal);
+    never needed at inference by the pooled arms."""
+    import re as _re
+    q = ex["question"]
+    devs = [d_ for d_ in DEVICES if d_ in q]
+    if not devs or not ex["meta"].get("annot"):
+        return None
+    dev = devs[0]
+    enc = tok(ex["context"], add_special_tokens=False, return_offsets_mapping=True)
+    if enc["input_ids"][:len(ctx_ids)] != ctx_ids:
+        return None
+    off, L = enc["offset_mapping"], len(ctx_ids)
+    pat = _re.escape(dev) + r" at ([A-Z][a-z]+ [0-9A-Z]+)"
+    ent_ctx = sorted({t for m in _re.finditer(pat, ex["context"]) for t in _span_tokens(off, m.start(), m.end(), L)})
+    p_text = PROMPT.format(q=q)
+    penc = tok(p_text, add_special_tokens=False, return_offsets_mapping=True)
+    mq = _re.search(pat, p_text)
+    ent_q = _span_tokens(penc["offset_mapping"], mq.start(), mq.end(), len(prompt_ids)) if mq else []
+    a = ex["meta"]["annot"]
+    val_first = []
+    for v in [ex["answer"]] + list(a.get("distractor_values", [])):
+        c = ex["context"].find(v)
+        vt = _span_tokens(off, c, c + len(v), L) if c >= 0 else []
+        val_first.append(vt[0] if vt else None)
+    return {"ent_ctx": ent_ctx, "ent_q": ent_q, "val_first": val_first}
 
 
 # ── record → example (pure python; no tokenizer needed) ───────────────────────
@@ -124,8 +158,12 @@ def tokenize_example(tok, ex: dict, cfg: LLMConfig, progress=None) -> dict:
         prompt = prompt[-(S - 8):]
     a = ans_ids(ex["answer"])[:S - len(prompt)]
     w = ans_ids(ex["wrong"])[:S - len(prompt)] if ex.get("wrong") else None
+    ann = None
+    cropped = progress is not None and cfg.crop and fact_tok is not None and (cfg.crop_annotated or not ex["meta"].get("annot"))
+    if (cfg.pool == "oracle" or cfg.key_loss_weight > 0) and ex["meta"].get("annot") and not cropped:
+        ann = annotation_tokens(tok, ex, ctx, prompt)
     return {"ctx": ctx, "prompt": prompt, "ans": a, "wrong": w, "meta": ex["meta"], "text_answer": ex["answer"],
-            "fact_tok": fact_tok, "dist_tokens": dist}
+            "fact_tok": fact_tok, "dist_tokens": dist, "ann": ann}
 
 
 class QADataset:
@@ -172,9 +210,33 @@ def collate(items: List[dict], cfg: LLMConfig, pad_id: int, use_wrong: bool = Fa
         ans_tok[i, :L] = torch.tensor(ans)
         ans_valid[i, :L] = 1
     ids[:, :n] = ctx_flat.view(B, n, S)
-    return {"ids": ids, "write": write, "ans_pos": ans_pos, "ans_tok": ans_tok, "ans_valid": ans_valid,
-            "prompt_len": prompt_len, "n_ctx_seg": n, "meta": [it["meta"] for it in items],
-            "text_answer": [it["text_answer"] for it in items]}
+    out = {"ids": ids, "write": write, "ans_pos": ans_pos, "ans_tok": ans_tok, "ans_valid": ans_valid,
+           "prompt_len": prompt_len, "n_ctx_seg": n, "meta": [it["meta"] for it in items],
+           "text_answer": [it["text_answer"] for it in items]}
+    if any(it.get("ann") for it in items):                 # oracle pool mask + key-loss positions (programmatic docs only)
+        pm = torch.zeros(B, (n + 1) * S)
+        K = max((len(it["ann"]["val_first"]) for it in items if it.get("ann")), default=1)
+        kl_q = torch.zeros(B, dtype=torch.long)
+        kl_c = torch.zeros(B, K, dtype=torch.long)
+        kl_m = torch.zeros(B, K, dtype=torch.bool)
+        kl_h = torch.zeros(B, dtype=torch.bool)
+        for i, it in enumerate(items):
+            an = it.get("ann")
+            if not an:
+                continue
+            base = n * S - len(it["ctx"])
+            for t in an["ent_ctx"]:
+                pm[i, base + t] = 1
+            for t in an["ent_q"]:
+                pm[i, n * S + t] = 1
+            vf = an["val_first"]
+            if len(vf) >= 2 and all(v_ is not None and v_ >= 1 for v_ in vf):
+                kl_q[i] = n * S + len(it["prompt"]) - 1
+                kl_c[i, :len(vf)] = torch.tensor([base + v_ - 1 for v_ in vf])
+                kl_m[i, :len(vf)] = True
+                kl_h[i] = True
+        out.update({"pool_mask": pm, "kl_q": kl_q, "kl_cands": kl_c, "kl_cmask": kl_m, "kl_has": kl_h})
+    return out
 
 
 def collate_oracle(items: List[dict], cfg: LLMConfig, pad_id: int, use_wrong: bool = False):
