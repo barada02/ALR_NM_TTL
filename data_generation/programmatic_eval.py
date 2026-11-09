@@ -27,7 +27,7 @@ import os
 import random
 import re
 import string
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 VERSION = "programmatic_eval_v2"   # v2 adds train/heldout pools; pools="all" reproduces v1 byte for byte
 
@@ -82,6 +82,60 @@ POOLS = {
     "heldout": dict(devices=[DEVICES[i] for i in (1, 3, 5, 7)], locs=LOCS2[24:], fact=FACT_T_HELD, restate=RESTATE_T_HELD),
     "heldout_v2": dict(devices=DEVICES_V2, locs=LOCS_V2, fact=FACT_T_V2, restate=RESTATE_T_V2),
 }
+
+# ── E17: diversified TRAINING pool ("train_div") and the untouched v3 pool ("heldout_v3") ──────────────────────────────────────
+# Templates use {ENT} / {ATTR} / {VALUE}. No template starts with the value (sentence-initial values are never written by design:
+# the first value token's shift_v pair crosses the masked sentence boundary) and none uses a pronoun for the entity.
+FACT_T_TRAIN_DIV = [
+    "The {ATTR} on record for the {ENT} is {VALUE}.", "According to the maintenance log, the {ENT} has the {ATTR} {VALUE}.",
+    "Technicians recorded the {ENT} with {VALUE} for the {ATTR}.", "In the asset database, the {ATTR} for the {ENT} appears as {VALUE}.",
+    "The {ENT} is listed with the {ATTR} {VALUE}.", "During the audit, staff verified that the {ATTR} of the {ENT} was {VALUE}.",
+    "The latest report gives the {ENT} a {ATTR} of {VALUE}.", "As documented, {VALUE} is the {ATTR} on file for the {ENT}.",
+    "A label on the {ENT} shows the {ATTR} {VALUE}.", "The handover notes state the {ATTR} of the {ENT} as {VALUE}.",
+    "Engineers entered {VALUE} under {ATTR} for the {ENT}.", "The {ATTR} that applies to the {ENT} is {VALUE}, as confirmed last month.",
+    "For reference, the {ENT} has {VALUE} as the {ATTR}.", "The file on the {ENT} specifies a {ATTR} of {VALUE}.",
+    "Checking the {ENT}, the crew found the {ATTR} to be {VALUE}.", "Under the current plan, the {ATTR} for the {ENT} stays at {VALUE}.",
+    "The system shows {VALUE} as the {ATTR} linked to the {ENT}.", "Note that the {ENT} uses the {ATTR} {VALUE}.",
+    "Per the site summary, the {ATTR} of the {ENT} equals {VALUE}.", "The supervisor confirmed that the {ENT} has a {ATTR} of {VALUE}.",
+]
+RESTATE_T_DIV = [
+    "An update changed the {ATTR} of the {ENT} to {VALUE}.", "The {ATTR} of the {ENT} is now {VALUE} after the latest revision.",
+    "Following maintenance, the {ENT} now has the {ATTR} {VALUE}.", "A newer entry sets the {ATTR} for the {ENT} to {VALUE}.",
+    "Records were corrected and the {ENT} now shows the {ATTR} {VALUE}.", "After the replacement, {VALUE} became the {ATTR} of the {ENT}.",
+]
+Q_T_TRAIN_DIV = [
+    "What {ATTR} does the {ENT} have?", "Which {ATTR} belongs to the {ENT}?", "What does the register list for the {ENT} under {ATTR}?",
+    "For the {ENT}, what is the {ATTR}?", "What does the log give as the {ATTR} of the {ENT}?", "Find the {ATTR} of the {ENT}.",
+    "What {ATTR} was documented for the {ENT}?", "Check which {ATTR} the {ENT} has.", "Name the {ATTR} of the {ENT}.",
+    "What is the {ATTR} of the {ENT}?",
+]
+ATTR_PHRASES = {"serial": ["serial number", "serial code", "serial ID"],
+                "cost": ["replacement cost", "replacement price", "cost of replacement"],
+                "date": ["last inspection date", "most recent inspection date", "date of the last inspection"],
+                "port": ["service port", "service port number", "maintenance port"],
+                "engineer": ["responsible engineer", "engineer in charge", "supervising engineer"]}
+ATTR_CANON = {a_: [ATTRS[a_][0]] for a_ in ATTRS}
+ENT_FORMS_DIV = ["{d} at {l}", "{d} in {l}", "{l} {d}", "{d} located at {l}", "{d} installed at {l}"]
+ENT_FORMS_CANON = ["{d} at {l}"]
+DEVICES_TRAIN_DIV = [DEVICES[i] for i in (0, 2, 4, 6)] + [
+    "water pump", "pressure regulator", "fan coil", "hydraulic press", "backup battery", "steam trap", "dust collector", "cooling tower",
+    "fuel injector", "signal amplifier", "laser cutter", "mixing tank"]
+_TRAIN_LOC_WORDS = ["Alder", "Birch", "Cedar", "Elm", "Ferry", "Granite", "Hollow", "Juniper", "Kestrel", "Linden", "Maple", "Oak", "Pine",
+                    "Quarry", "River", "Stone", "Thorn", "Willow", "Aspen", "Brook", "Cliff", "Falcon", "Grove", "Heath", "Lark", "Moss",
+                    "Pond", "Shale", "Tide", "Wren"]
+LOCS_TRAIN_DIV = LOCS2[:24] + [f"{w} {n}" for i, w in enumerate(_TRAIN_LOC_WORDS) for n in (2 + i % 3, 5 + i % 3, 8)]   # single digits: no prefix clashes
+DEVICES_V3 = ["evaporator", "flare stack", "surge vessel", "ballast skid", "rectifier", "spindle drive", "centrifuge", "descaler"]
+LOCS_V3 = [f"{w} {n}" for w, n in zip(["Basalt", "Canyon", "Drift", "Fennel", "Garnet", "Hazel", "Indigo", "Jasper", "Kelp", "Lumen", "Marsh",
+                                       "Nimbus", "Onyx", "Pebble", "Quill", "Rowan", "Saffron", "Tundra", "Umber", "Vesper", "Wicker",
+                                       "Yarrow", "Zephyr", "Cobalt"], [3, 7, 2, 9, 4, 6, 8, 5] * 3)]
+POOLS["train_div"] = dict(devices=DEVICES_TRAIN_DIV, locs=LOCS_TRAIN_DIV, fact=FACT_T, restate=RESTATE_T)
+POOLS["heldout_v3"] = dict(devices=DEVICES_V3, locs=LOCS_V3, fact=[], restate=[])
+TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
+
+
+def _new_style(t: str) -> str:
+    return t.replace("{noun}", "{ATTR}").replace("{ent}", "{ENT}").replace("{v}", "{VALUE}")
+
 
 PRONOUN_EVENTS = ["was moved last week", "was serviced on Monday", "was inspected by the night shift", "was recalibrated after the audit",
                   "was relabelled during the review"]
@@ -335,6 +389,84 @@ class Gen:
                            n_colliding=k, absent=True, old_values=[], distractor_values=vals, all_values=vals)
 
 
+class DivGen(Gen):
+    """E17 generator: template, attribute phrasing and entity form are drawn per sentence; fact and question are drawn independently
+    (so the question rarely repeats the fact's surface form). All templates in {ENT} / {ATTR} / {VALUE} style."""
+
+    def __init__(self, seed: int, pools: str, fact_t, q_t, restate_t, ent_forms, attr_phrases):
+        super().__init__(seed, pools)
+        self.fact_t, self.q_t, self.restate_t = [_new_style(t) for t in fact_t], [_new_style(t) for t in q_t], [_new_style(t) for t in restate_t]
+        self.ent_forms, self.attr_phrases = ent_forms, attr_phrases
+
+    def value(self, attr: str, used: set) -> str:
+        while True:                                          # distinct AND substring-free (e.g. port 4521 vs 45210)
+            v = ATTRS[attr][1](self.r)
+            if not any(v in u or u in v for u in used):
+                used.add(v)
+                return v
+
+    @staticmethod
+    def fill(t: str, ent: str, attr: str, v: Optional[str] = None) -> str:
+        t = re.sub(r"\b([aA]) \{ATTR\}", lambda m: m.group(1) + ("n" if attr[0].lower() in "aeiou" else "") + " {ATTR}", t)
+        s = t.replace("{ENT}", ent).replace("{ATTR}", attr)
+        if v is not None:
+            s = s.replace("{VALUE}", v)
+        return s[0].upper() + s[1:]
+
+    def ent(self, device: str, loc: str) -> str:
+        return self.r.choice(self.ent_forms).format(d=device, l=loc)
+
+    def fact_sentence(self, attr, device, loc, v, restate=False):
+        t = self.r.choice(self.restate_t if restate else self.fact_t)
+        return self.fill(t, self.ent(device, loc), self.r.choice(self.attr_phrases[attr]), v)
+
+    def question(self, attr, device, loc, current=False):
+        t = self.r.choice(self.q_t)
+        cur = "current " if current and "current {ATTR}" not in t else ""
+        return self.fill(t, self.ent(device, loc), cur + self.r.choice(self.attr_phrases[attr]))
+
+
+def _llm_templates(tag: str):
+    """Accepted templates, re-checked at load time with the CURRENT validators (a rule added after generation applies too)."""
+    import llm_templates as lt
+    d = json.load(open(os.path.join(TEMPLATE_DIR, f"{tag}.json"), encoding="utf-8"))
+    return [t for t in d["fact"]["accepted"] if lt.check_fact(t) is None], [t for t in d["question"]["accepted"] if lt.check_question(t) is None]
+
+
+def train_div_gen(seed: int) -> DivGen:
+    f_llm, q_llm = _llm_templates("train_glm")
+    return DivGen(seed, "train_div", FACT_T + FACT_T_TRAIN_DIV + f_llm, Q_T["train"] + Q_T_TRAIN_DIV + q_llm,
+                  RESTATE_T + RESTATE_T_DIV, ENT_FORMS_DIV, ATTR_PHRASES)
+
+
+def v3_gen(seed: int) -> DivGen:
+    f_llm, q_llm = _llm_templates("v3_kimi")
+    return DivGen(seed, "heldout_v3", f_llm, q_llm, [], ENT_FORMS_CANON, ATTR_CANON)
+
+
+def verify_div(rec: dict, locs: List[str]):
+    """Invariants of E17 records (any template / entity form)."""
+    a, ctx, an, q = rec["answer"], rec["context"], rec["annot"], rec["question"]
+    assert ctx.count(a) == 1, "answer must appear exactly once"
+    vals = an["old_values"] + [a] + an["distractor_values"]
+    assert len(set(vals)) == len(vals) and all(ctx.count(v) == 1 for v in vals), "values distinct, each stated once"
+    asked = [l for l in locs if re.search(re.escape(l) + r"(?![0-9])", q)]
+    assert len(asked) == 1, f"question must name exactly one location ({asked})"
+    sents = re.split(r"(?<=[.])\s+", ctx)
+    for v in vals:
+        s = [x for x in sents if v in x]
+        assert len(s) == 1 and not s[0].startswith(v), "a value starts its sentence or spans sentences"
+        assert sum(w in s[0] for w in vals) == 1, "two values in one sentence"
+    s_ans = [x for x in sents if a in x][0]
+    assert re.search(re.escape(asked[0]) + r"(?![0-9])", s_ans), "the answer sentence must name the asked location"
+    for dv in an["distractor_values"]:
+        s2 = [x for x in sents if dv in x][0]
+        assert not re.search(re.escape(asked[0]) + r"(?![0-9])", s2), "a distractor value is attached to the asked location"
+    if an["old_values"]:
+        pos = [ctx.find(v) for v in an["old_values"]] + [ctx.find(a)]
+        assert pos == sorted(pos), "versions out of order"
+
+
 def category_name(c):
     return c
 
@@ -435,11 +567,48 @@ def main():
     ap.add_argument("--scale", type=float, default=1.0, help="multiply the default category sizes")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--splits", action="store_true", help="v2: write eval_seen_* and eval_heldout_* (disjoint entity types / locations / templates)")
+    ap.add_argument("--train_div_out", action="store_true", help="E17: diversified training files + eval_seen_div_colliding")
+    ap.add_argument("--train_out_dir", default="miniTitan_data")
+    ap.add_argument("--v3", action="store_true", help="E17: the untouched confirmation set eval_v3_colliding.jsonl (needs templates/v3_kimi.json)")
     ap.add_argument("--v2", action="store_true", help="E16: write the fresh held-out set eval_v2_colliding.jsonl (pool heldout_v2)")
     ap.add_argument("--para", action="store_true", help="write the P1 / P2 paraphrase and pronoun sets (DESIGN_ENTITY_KEYS.md 8)")
     ap.add_argument("--cue", action="store_true", help="write the overwrite cue-probe sets eval_cue_{orig,cuefree,cuefirst}.jsonl (train pools)")
     ap.add_argument("--train_out", default="", help="v2: write programmatic TRAINING files minititan_prog_*.jsonl into this directory")
     a = ap.parse_args()
+    if a.train_div_out:
+        # E17 diversified training files (same sizes as the Stage 2 programmatic files) + the matching SEEN colliding eval set
+        g = train_div_gen(a.seed + 7000)
+        data = {"prog2_colliding": [], "prog2_overwrite": [], "prog2_single": []}
+        for i in range(4000):
+            k = [2, 4, 8][i % 3]
+            data["prog2_colliding"] += g.colliding_multi(k, g.r.randint(2, min(4, k)))
+        data["prog2_overwrite"] = [g.overwrite(n_colliding=0) for _ in range(6000)]
+        data["prog2_single"] = [g.single() for _ in range(4000)]
+        os.makedirs(a.train_out_dir, exist_ok=True)
+        for name, recs in data.items():
+            for rec in recs:
+                verify_div(rec, LOCS_TRAIN_DIV)
+            write_jsonl(os.path.join(a.train_out_dir, f"minititan_{name}.jsonl"), recs)
+            print(f"{name}: {len(recs)} examples from {len({r['context'] for r in recs})} documents (verified)")
+        gs = train_div_gen(6262)
+        seen = [gs.colliding([2, 4, 8][i % 3]) for i in range(300)]
+        for rec in seen:
+            verify_div(rec, LOCS_TRAIN_DIV)
+        write_jsonl(os.path.join(a.out_dir, "eval_seen_div_colliding.jsonl"), seen)
+        print("eval_seen_div_colliding: 300 records (verified)")
+        return
+    if a.v3:
+        # E17 untouched confirmation set v3: Kimi templates (a family used nowhere in training), entities used nowhere else
+        g = v3_gen(9191)
+        recs = [g.colliding([2, 4, 8][i % 3]) for i in range(300)]
+        train_words = {w for x in DEVICES_TRAIN_DIV + LOCS_TRAIN_DIV + DEVICES_V2 + LOCS_V2 + DEVICES + LOCS + LOCS2 for w in x.split() if not w.isdigit()}
+        for rec in recs:
+            verify_div(rec, LOCS_V3)
+        for x in DEVICES_V3 + LOCS_V3:
+            assert not any(w in train_words for w in x.split() if not w.isdigit()), f"v3 entity word reused: {x}"
+        write_jsonl(os.path.join(a.out_dir, "eval_v3_colliding.jsonl"), recs)
+        print("eval_v3_colliding: 300 records (verified)")
+        return
     if a.v2:
         # E16: fresh held-out set v2 (colliding, k = 2 / 4 / 8). Becomes a DEVELOPMENT set once it has compared A2 and A3.
         os.makedirs(a.out_dir, exist_ok=True)

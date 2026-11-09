@@ -49,7 +49,8 @@ class SegmentedMemoryLM(nn.Module):
             inner_clip=cfg.inner_clip, use_momentum=cfg.use_momentum, second_order=cfg.second_order,
             retention_bias=cfg.retention_bias, retention_learned=cfg.retention_learned, input_norm=True,
             shift_v=cfg.shift_v, key_mode=cfg.key_mode, pool=cfg.pool, read_cap=cfg.read_cap,
-            mask_cross_pair=cfg.mask_cross_pair, ablate_key_part=cfg.ablate_key_part,
+            mask_cross_pair=cfg.mask_cross_pair,
+            ablate_key_part="local" if cfg.context_only_key else cfg.ablate_key_part,
             force_gate=cfg.force_gate, force_gate_value=cfg.force_gate_value)).float()
         self.last_seg_share = 0.0
         if cfg.key_mode == "composite":

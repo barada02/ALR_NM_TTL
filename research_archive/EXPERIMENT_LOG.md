@@ -425,6 +425,31 @@ clause-level pooled key (e.g. write at the end of the sentence). An auxiliary ke
 **Caveat that limits the claim:** the entity-vs-entity success is substantially LEXICAL — the question repeats the entity's name ("flow meter at Ridge 4"), which is why it transfers to unseen names (raw cosine already 0.71).
 Paraphrased or pronoun references are not tested here and are the obvious next stress test for entity-pooled keys.
 
+## Pre-registration — E17: the FINAL architecture iteration (written BEFORE any E17 training run; do not edit after results arrive)
+Reviewer's call after E16: one diversified retrain, then write the paper whatever the outcome. Rationale: E15/E16 trained binding on 5 surface forms; the
+supported conclusion so far is "does not transfer from 5 templates to a 6th", not "test-time memory cannot address facts". E16 eliminated the competing
+explanations (forcing the gate fixed storage, not read; the key loss is exonerated; longer training does nothing); template diversity is what remains.
+**Data (built and verified before this entry; jsonl gitignored, templates committed under `data_generation/templates/`).** `programmatic_eval.py --train_div_out`:
+`minititan_prog2_{colliding,overwrite,single}` (10,679 questions over 4,000 colliding docs / 6,000 / 4,000 — the Stage 2 sizes). Fact templates 162 = 3 old + 20 hand-written
++ 139 written by GLM (`glm-5p3`, Fireworks; `llm_templates.py`, placeholders {ENT}/{ATTR}/{VALUE} filled programmatically, so every answer is exact). Question templates 80,
+restate 9. Attribute phrasing 3 per attribute, drawn independently for fact and question; 5 entity forms ("X at L", "X in L", "L X", "X located at L", "X installed at L");
+16 device types, 114 locations. Every training template is checked against the v2 development set (word-trigram Jaccard < 0.3 vs every v2 fact / restate / question).
+**Scope rule (stated, not fixed):** no training or evaluation template starts with the value (sentence-initial values are never written by design); no template uses a pronoun
+for the entity. The claim is restricted accordingly (and to same-sentence entity mentions, per E15's P2).
+**Arms (screen, seed 0, 3000 steps; everything else exactly as E15: warm start from model v1, mixture 50 / 25 / 15 / 10, lr 3e-4, abort rule at step 1000):**
+`v6_A3d_s0` = A3 as-is (attention pool + key loss 0.1). `v6_A4d_s0` = context-only key: both keys = RMS(W_c · c), local part dropped in training and eval; W_c warm-started
+as a copy of model v1's W_k (a zero W_c would give an all-zero key) — indicted twice by E15 / E16 (memorisation channel; dropping it helped held-out).
+**Selection (development set v2 only):** the arm with the higher `eval_v2_colliding` READ at 3000 steps; if the difference is < 0.03, the higher v2 output ranking decides.
+An arm that trips the abort rule is out. If both abort, E17 has failed and the paper is written.
+**Confirmation (once):** the selected arm, 3 seeds (0 / 1 / 2), 6000 steps, identical configs. Judged ONLY after all three finish, on the untouched
+`eval_v3_colliding` (sha256 c99ef40d…): 300 docs, k = 2 / 4 / 8; fact and question templates written by Kimi (`kimi-k3`, a family used nowhere in training), excluded against
+every training template and v2 (trigram Jaccard < 0.3); entities (8 device types, 24 locations) share no word with any training, v1 or v2 entity.
+**Gates (unchanged from E15):** v3 READ ≥ 0.50 with Wilson lower bound > chance (pooled over seeds); seen READ (`eval_seen_div_colliding`, the training distribution) ≥ 0.60;
+Gemini long-context NLL ≤ 1.15 (mean of 3 seeds). Reported, not gates: v3 output ranking, storage / key / gate probes, v2 read. The Gemini rule (e) and the P2 scoping stand
+and are not re-litigated.
+**HARD STOP (stated in advance):** if the confirmed arm fails v3, architecture iteration ends. No rescue of the other arm on v3, no third key redesign, no width / chunk / lr
+sweep. Pass or fail, the next step is the paper; the E13-E17 per-stage probe table is its spine.
+
 ### E16 — forced write gate + fresh held-out v2 (done; judged by the E16 pre-registration below, nothing re-tuned)
 Probes `results/llm_probe/{run}__{force_match,force_sent,force_all,v2}.json`, output ranking `results/llm_eval/{run}__v2.json`. Pooled over the 3 A3 confirmation seeds (n = 900) unless named.
 ```

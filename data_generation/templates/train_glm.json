@@ -1,0 +1,403 @@
+{
+ "model": "accounts/fireworks/models/glm-5p3",
+ "seed": 17,
+ "excluded_against": "v2 templates",
+ "prompts": {
+  "fact": "You are writing reusable sentence TEMPLATES for a synthetic dataset about industrial equipment records.\nEach template states ONE attribute value of ONE piece of equipment and uses exactly these three placeholders, each exactly once:\n  {{ENT}}   a bare noun phrase naming the equipment item, WITHOUT an article (e.g. \"boiler at Mesa 4\"), so write \"the {{ENT}}\"\n  {{ATTR}}  a bare attribute name WITHOUT an article (e.g. \"serial number\", \"replacement cost\"), so write \"the {{ATTR}}\" or \"a {{ATTR}}\"\n  {{VALUE}} the value itself (e.g. \"QY-1234-B\", \"March 3, 2021\", \"Hana Vogt\")\nRules: exactly one sentence ending with a period; {{VALUE}} must NOT be the first word of the sentence; no other placeholders,\nno digits, no quotation marks, no line breaks; 8 to 25 words; the sentence must make sense for any attribute and any equipment.\nStyle for this batch: {style}\nWrite {n} templates that differ from each other in structure, not just in wording. Return ONLY a JSON array of strings.",
+  "question": "You are writing reusable QUESTION templates for a synthetic dataset about industrial equipment records.\nEach template asks for ONE attribute of ONE piece of equipment and uses exactly these two placeholders, each exactly once:\n  {{ENT}}   a bare noun phrase naming the equipment item, WITHOUT an article (e.g. \"boiler at Mesa 4\"), so write \"the {{ENT}}\"\n  {{ATTR}}  a bare attribute name WITHOUT an article (e.g. \"serial number\"), so write \"the {{ATTR}}\"\nRules: exactly one sentence, ending with \"?\" (a question) or \".\" (a request); no other placeholders, no digits, no quotation marks;\n5 to 18 words; it must make sense for any attribute and any equipment.\nStyle for this batch: {style}\nWrite {n} templates that differ from each other in structure, not just in wording. Return ONLY a JSON array of strings."
+ },
+ "fact": {
+  "accepted": [
+   "The maintenance log lists the {ATTR} of the {ENT} as {VALUE}.",
+   "According to the maintenance log, the {ENT} has a {ATTR} of {VALUE}.",
+   "For the {ENT}, the maintenance log records the {ATTR} as {VALUE}.",
+   "The maintenance log shows that the {ATTR} for the {ENT} is {VALUE}.",
+   "In the maintenance log, the {ENT} is noted with a {ATTR} of {VALUE}.",
+   "Regarding the {ENT}, the maintenance log gives the {ATTR} as {VALUE}.",
+   "The {ENT} is recorded in the maintenance log with a {ATTR} of {VALUE}.",
+   "Maintenance records identify the {ATTR} of the {ENT} as {VALUE}.",
+   "The maintenance log notes that the {ENT} carries a {ATTR} of {VALUE}.",
+   "Documentation in the maintenance log gives the {ENT} a {ATTR} of {VALUE}.",
+   "The maintenance log records {VALUE} for the {ATTR} of the {ENT}.",
+   "Entry in the maintenance log shows the {ENT} with a {ATTR} of {VALUE}.",
+   "The maintenance log lists, under the {ENT}, a {ATTR} of {VALUE}.",
+   "For record purposes, the maintenance log specifies the {ATTR} of the {ENT} as {VALUE}.",
+   "The maintenance log indicates that the {ENT} possesses a {ATTR} of {VALUE}.",
+   "Within the maintenance log, the {ATTR} belonging to the {ENT} is given as {VALUE}.",
+   "The {ATTR} was recorded as {VALUE} for the {ENT} during the latest inspection.",
+   "For the {ENT}, the {ATTR} was officially entered as {VALUE} in the system.",
+   "A value of {VALUE} was assigned to the {ATTR} of the {ENT}.",
+   "The {ATTR} belonging to the {ENT} was documented as {VALUE} by the field team.",
+   "The {ATTR} for the {ENT} was later updated to {VALUE} by the maintenance office.",
+   "In the official log, the {ENT} was listed with a {ATTR} of {VALUE}.",
+   "The {ATTR} associated with the {ENT} was confirmed to be {VALUE} after review.",
+   "A {ATTR} of {VALUE} was registered for the {ENT} at the time of installation.",
+   "The {ENT} was found to have a {ATTR} of {VALUE} when checked.",
+   "As part of the audit, the {ATTR} of the {ENT} was verified as {VALUE}.",
+   "The entry showing {VALUE} was saved under the {ATTR} field for the {ENT}.",
+   "The {ATTR} held by the {ENT} was initially entered as {VALUE} by the previous operator.",
+   "The {ATTR} corresponding to the {ENT} was captured as {VALUE} in the database.",
+   "For record keeping, the {ENT} was tagged with a {ATTR} of {VALUE}.",
+   "The {ATTR} of the {ENT} was set to {VALUE} following the supervisor's approval.",
+   "A {ATTR} was attached to the {ENT}, and the value of {VALUE} was stored.",
+   "The {ENT} was processed with the {ATTR} listed as {VALUE} on the form.",
+   "During data migration, the {ATTR} of the {ENT} was carried over as {VALUE}.",
+   "According to the latest inventory, the {ENT} has a {ATTR} of {VALUE}.",
+   "In the maintenance log, the {ATTR} for the {ENT} is recorded as {VALUE}.",
+   "As of the most recent inspection, the {ENT} carries a {ATTR} of {VALUE}.",
+   "Under the current filing system, the {ENT} is documented with a {ATTR} of {VALUE}.",
+   "After the last update, the {ATTR} on file for the {ENT} reads {VALUE}.",
+   "In accordance with company policy, the {ENT} must display a {ATTR} of {VALUE}.",
+   "Based on the registrar's notes, the {ATTR} belonging to the {ENT} is {VALUE}.",
+   "Across all recent reports, the {ENT} shows a {ATTR} of {VALUE}.",
+   "During the recent review, the {ATTR} associated with the {ENT} was listed as {VALUE}.",
+   "Among the archived documents, the {ENT} appears with a {ATTR} of {VALUE}.",
+   "From the perspective of the asset manager, the {ATTR} of the {ENT} remains {VALUE}.",
+   "At the time of registration, the {ENT} received a {ATTR} of {VALUE}.",
+   "On the master data sheet, the {ATTR} entered for the {ENT} is {VALUE}.",
+   "Upon completion of the survey, the {ENT} was confirmed to have a {ATTR} of {VALUE}.",
+   "Before the handover, the {ATTR} of the {ENT} was finalized as {VALUE}.",
+   "Without any recent amendments, the {ENT} retains a {ATTR} of {VALUE}.",
+   "The technician logged the {ATTR} of the {ENT} as {VALUE} during the morning walkthrough.",
+   "On site, the inspector confirmed the {ENT} has a {ATTR} of {VALUE}.",
+   "Maintenance staff recorded the {ATTR} for the {ENT} as {VALUE} in the shift notes.",
+   "Per the crew lead, the {ATTR} on the {ENT} is {VALUE}.",
+   "The {ENT} shows a {ATTR} of {VALUE}, noted by the on duty technician.",
+   "During inspection, we verified the {ATTR} of the {ENT} to be {VALUE}.",
+   "The {ENT} carries a {ATTR} of {VALUE}, according to the field report.",
+   "An operator confirmed that the {ENT} has the {ATTR} listed as {VALUE}.",
+   "The {ATTR} for the {ENT} was entered as {VALUE} by the night shift.",
+   "After the check, the inspector filed the {ATTR} of the {ENT} as {VALUE}.",
+   "The {ENT} was reviewed, and the {ATTR} was found to be {VALUE}.",
+   "Site records show the {ENT} with a {ATTR} of {VALUE}.",
+   "The apprentice noted the {ATTR} on the {ENT} as {VALUE} for the supervisor.",
+   "We updated the log so the {ENT} now shows the {ATTR} as {VALUE}.",
+   "The {ATTR} attached to the {ENT} is {VALUE}, per the lead inspector.",
+   "A technician reported that the {ATTR} of the {ENT} equals {VALUE}.",
+   "From the latest walkthrough, the {ENT} has the {ATTR} set to {VALUE}.",
+   "The crew verified the {ATTR} for the {ENT} and logged {VALUE} accordingly.",
+   "The {ENT} was recorded with a {ATTR} of {VALUE} during the latest inventory audit.",
+   "Maintenance staff confirmed that the {ENT} has a {ATTR} listed as {VALUE}.",
+   "According to the equipment register, the {ENT} carries a {ATTR} of {VALUE}.",
+   "Inspectors noted that the {ENT} showed a {ATTR} equal to {VALUE}.",
+   "A {ATTR} of {VALUE} was assigned to the {ENT} after installation.",
+   "The database entry for the {ENT} stores the {ATTR} under the value {VALUE}.",
+   "Records indicate that the {ENT} possesses a {ATTR} documented as {VALUE}.",
+   "For the {ENT}, the {ATTR} currently stands at {VALUE}.",
+   "The {ATTR} belonging to the {ENT} is officially recorded as {VALUE}.",
+   "Field technicians verified the {ATTR} of the {ENT} as {VALUE}.",
+   "Whoever updated the {ENT} entered a {ATTR} of {VALUE} in the system.",
+   "The {ENT} appears in the ledger with a {ATTR} noted as {VALUE}.",
+   "Documentation shows that the {ENT} was tagged with a {ATTR} of {VALUE}.",
+   "The supervisor logged the {ATTR} for the {ENT} as {VALUE}.",
+   "A {ATTR} value of {VALUE} is associated with the {ENT} in the catalog.",
+   "The {ENT} retains a {ATTR} that has remained {VALUE} since the last review.",
+   "An auditor cross-checked the {ATTR} of the {ENT} and found {VALUE}.",
+   "The asset database lists the {ENT} with a {ATTR} of {VALUE}.",
+   "According to the handover sheet, the {ENT} has the {ATTR} {VALUE}.",
+   "The audit file records the {ATTR} of the {ENT} as {VALUE}.",
+   "Per the label plate, the {ENT} carries a {ATTR} of {VALUE}.",
+   "Documentation confirms the {ATTR} for the {ENT} is {VALUE}.",
+   "The asset database entry for the {ENT} specifies the {ATTR} as {VALUE}.",
+   "Records in the audit file identify the {ATTR} of the {ENT} to be {VALUE}.",
+   "The handover sheet notes a {ATTR} of {VALUE} for the {ENT}.",
+   "System data indicates that the {ENT} holds the {ATTR} {VALUE}.",
+   "On the label plate, the {ENT} is stamped with the {ATTR} {VALUE}.",
+   "The {ENT} appears in the asset database with a {ATTR} of {VALUE}.",
+   "The audit file attributes a {ATTR} of {VALUE} to the {ENT}.",
+   "Entries show the {ENT} documented with the {ATTR} {VALUE}.",
+   "A {ATTR} of {VALUE} is registered for the {ENT} in the asset database.",
+   "The system records the {ENT} under the {ATTR} {VALUE}.",
+   "Official documentation states the {ENT} possesses a {ATTR} of {VALUE}.",
+   "The label plate displays the {ATTR} {VALUE} for the {ENT}.",
+   "Based on the audit file, the {ENT} is associated with the {ATTR} {VALUE}.",
+   "The {ENT} has a {ATTR} of {VALUE}, which was confirmed during the last inspection.",
+   "Records list the {ATTR} for the {ENT} as {VALUE}, as documented in the maintenance log.",
+   "The {ATTR} of the {ENT} is {VALUE}, according to the most recent equipment inventory.",
+   "For the {ENT}, the {ATTR} was recorded as {VALUE}, which the technician verified on site.",
+   "The {ENT} carries a {ATTR} of {VALUE}, as noted in the official asset register.",
+   "Current documentation shows the {ATTR} of the {ENT} as {VALUE}, which remains unchanged since installation.",
+   "The {ENT} was assigned a {ATTR} of {VALUE}, which appears in the procurement records.",
+   "Inspectors logged the {ATTR} for the {ENT} as {VALUE}, as of the last audit.",
+   "The {ATTR} belonging to the {ENT} stands at {VALUE}, which matches the original specification.",
+   "The {ENT} reports a {ATTR} of {VALUE}, as captured by the monitoring system.",
+   "Per the facility database, the {ENT} has a {ATTR} of {VALUE}, which was last validated this quarter.",
+   "The {ENT} holds a {ATTR} of {VALUE}, which the engineering team reviewed for accuracy.",
+   "Archive files indicate that the {ATTR} of the {ENT} is {VALUE}, as entered by the records clerk.",
+   "The {ATTR} associated with the {ENT} is {VALUE}, which has been cross-checked against the invoice.",
+   "The {ENT} displays a {ATTR} of {VALUE}, which operators reference during daily checks.",
+   "Documentation confirms that the {ENT} carries a {ATTR} of {VALUE}, as stated in the compliance report.",
+   "The {ENT} retains a {ATTR} of {VALUE}, which has not required any update since commissioning.",
+   "The {ATTR} assigned to the {ENT} is {VALUE}, as reflected in the current asset summary.",
+   "Supervisors recorded the {ATTR} of the {ENT} as {VALUE}, which was later approved by management.",
+   "The {ENT} is listed with a {ATTR} of {VALUE}, which the system flags as verified data.",
+   "After the inspection was finished, the crew recorded the {ATTR} of the {ENT} as {VALUE}.",
+   "Because the records had to stay current, the supervisor updated the {ATTR} for the {ENT} to {VALUE}.",
+   "Whenever auditors request documentation, the plant provides the {ATTR} of the {ENT}, which currently reads {VALUE}.",
+   "Once the paperwork was verified, the clerk confirmed that the {ENT} carries the {ATTR} {VALUE}.",
+   "Although several entries were missing, the log clearly shows the {ATTR} of the {ENT} as {VALUE}.",
+   "Before the file was archived, the engineer noted that the {ENT} has the {ATTR} {VALUE}.",
+   "Since accuracy matters in these records, the database lists the {ATTR} of the {ENT} as {VALUE}.",
+   "While reviewing the maintenance history, the technician found the {ATTR} of the {ENT} recorded as {VALUE}.",
+   "As part of the annual audit, the inspector verified that the {ENT} bears the {ATTR} {VALUE}.",
+   "Even though the entry was disputed, the official paperwork names {VALUE} as the {ATTR} of the {ENT}.",
+   "Given that all equipment must be catalogued, the registrar entered the {ATTR} of the {ENT} as {VALUE}.",
+   "Following the update procedure, the system now displays the {ATTR} of the {ENT} as {VALUE}.",
+   "So that future crews have clear records, the log documents the {ATTR} of the {ENT} as {VALUE}.",
+   "Wherever the archive is consulted, readers will find the {ATTR} of the {ENT} listed as {VALUE}.",
+   "Provided that the form was filled out properly, the {ENT} should show a {ATTR} of {VALUE}.",
+   "Now that the records have been digitized, anyone can see the {ATTR} of the {ENT}, which is {VALUE}."
+  ],
+  "rejected": [
+   {
+    "t": "The maintenance log specifies {VALUE} as the {ATTR} of the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Per the maintenance log, the {ATTR} assigned to the {ENT} is {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The {ENT} appears in the maintenance log with its {ATTR} listed as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The {ENT} is documented in the maintenance log, where its {ATTR} is recorded as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "It was noted that the {ATTR} of the {ENT} equals {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "It was reported that {VALUE} stands as the {ATTR} of the {ENT}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "Following the audit, the {ATTR} of the {ENT} was verified as {VALUE}.",
+    "why": "near-duplicate of an accepted template"
+   },
+   {
+    "t": "Per the facility records, the {ENT} lists its {ATTR} as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "Within the equipment database, the {ATTR} assigned to the {ENT} is {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Throughout the service history, the {ENT} has kept its {ATTR} as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The {ENT} was checked today, and its {ATTR} came back as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The {ENT} remains in service, with its {ATTR} documented as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The official file for the {ENT} identifies its {ATTR} as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The {ENT} is distinguished by a {ATTR} recorded as {VALUE} in its profile.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "Personnel responsible for the {ENT} reported its {ATTR} to be {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The maintenance system shows that the {ENT} was assigned the {ATTR} {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The handover sheet lists {VALUE} as the {ATTR} of the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "If anyone questions the paperwork, they can check the {ATTR} of the {ENT}, officially listed as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "When the new system went live, it assigned the {ENT} a {ATTR} of {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "Unless someone corrects the file, it will keep showing the {ATTR} of the {ENT} as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "In case the detail was overlooked earlier, let it be noted that the {ENT} has the {ATTR} {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   }
+  ],
+  "raw": [
+   {
+    "style": "formal maintenance-log register; vary the verb (lists, records, shows, gives, notes, specifies)",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"The maintenance log lists the {ATTR} of the {ENT} as {VALUE}.\",\n  \"According to the maintenance log, the {ENT} has a {ATTR} of {VALUE}.\",\n  \"For the {ENT}, the maintenance log records the {ATTR} as {VALUE}.\",\n  \"The maintenance log shows that the {ATTR} for the {ENT} is {VALUE}.\",\n  \"In the maintenance log, the {ENT} is noted with a {ATTR} of {VALUE}.\",\n  \"The maintenance log specifies {VALUE} as the {ATTR} of the {ENT}.\",\n  \"Regarding the {ENT}, the maintenance log gives the {ATTR} as {VALUE}.\",\n  \"The {ENT} is recorded in the maintenance log with a {ATTR} of {VALUE}.\",\n  \"Maintenance records identify the {ATTR} of the {ENT} as {VALUE}.\",\n  \"The maintenance log notes that the {ENT} carries a {ATTR} of {VALUE}.\",\n  \"Per the maintenance log, the {ATTR} assigned to the {ENT} is {VALUE}.\",\n  \"The {ENT} appears in the maintenance log with its {ATTR} listed as {VALUE}.\",\n  \"Documentation in the maintenance log gives the {ENT} a {ATTR} of {VALUE}.\",\n  \"The maintenance log records {VALUE} for the {ATTR} of the {ENT}.\",\n  \"Entry in the maintenance log shows the {ENT} with a {ATTR} of {VALUE}.\",\n  \"The maintenance log lists, under the {ENT}, a {ATTR} of {VALUE}.\",\n  \"For record purposes, the maintenance log specifies the {ATTR} of the {ENT} as {VALUE}.\",\n  \"The maintenance log indicates that the {ENT} possesses a {ATTR} of {VALUE}.\",\n  \"Within the maintenance log, the {ATTR} belonging to the {ENT} is given as {VALUE}.\",\n  \"The {ENT} is documented in the maintenance log, where its {ATTR} is recorded as {VALUE}.\"\n]\n```"
+   },
+   {
+    "style": "passive voice, e.g. something was assigned / was recorded / was entered; put {VALUE} before {ENT} in about half",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"The {ATTR} was recorded as {VALUE} for the {ENT} during the latest inspection.\",\n  \"For the {ENT}, the {ATTR} was officially entered as {VALUE} in the system.\",\n  \"A value of {VALUE} was assigned to the {ATTR} of the {ENT}.\",\n  \"The {ATTR} belonging to the {ENT} was documented as {VALUE} by the field team.\",\n  \"It was noted that the {ATTR} of the {ENT} equals {VALUE}.\",\n  \"The {ATTR} for the {ENT} was later updated to {VALUE} by the maintenance office.\",\n  \"In the official log, the {ENT} was listed with a {ATTR} of {VALUE}.\",\n  \"The {ATTR} associated with the {ENT} was confirmed to be {VALUE} after review.\",\n  \"A {ATTR} of {VALUE} was registered for the {ENT} at the time of installation.\",\n  \"The {ENT} was found to have a {ATTR} of {VALUE} when checked.\",\n  \"As part of the audit, the {ATTR} of the {ENT} was verified as {VALUE}.\",\n  \"The entry showing {VALUE} was saved under the {ATTR} field for the {ENT}.\",\n  \"The {ATTR} held by the {ENT} was initially entered as {VALUE} by the previous operator.\",\n  \"It was reported that {VALUE} stands as the {ATTR} of the {ENT}.\",\n  \"The {ATTR} corresponding to the {ENT} was captured as {VALUE} in the database.\",\n  \"For record keeping, the {ENT} was tagged with a {ATTR} of {VALUE}.\",\n  \"The {ATTR} of the {ENT} was set to {VALUE} following the supervisor's approval.\",\n  \"A {ATTR} was attached to the {ENT}, and the value of {VALUE} was stored.\",\n  \"The {ENT} was processed with the {ATTR} listed as {VALUE} on the form.\",\n  \"During data migration, the {ATTR} of the {ENT} was carried over as {VALUE}.\"\n]\n```"
+   },
+   {
+    "style": "start with a prepositional or adverbial opener (According to ..., In the ..., Following ..., As of ...)",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"According to the latest inventory, the {ENT} has a {ATTR} of {VALUE}.\",\n  \"In the maintenance log, the {ATTR} for the {ENT} is recorded as {VALUE}.\",\n  \"As of the most recent inspection, the {ENT} carries a {ATTR} of {VALUE}.\",\n  \"Following the audit, the {ATTR} of the {ENT} was verified as {VALUE}.\",\n  \"Per the facility records, the {ENT} lists its {ATTR} as {VALUE}.\",\n  \"Within the equipment database, the {ATTR} assigned to the {ENT} is {VALUE}.\",\n  \"Under the current filing system, the {ENT} is documented with a {ATTR} of {VALUE}.\",\n  \"After the last update, the {ATTR} on file for the {ENT} reads {VALUE}.\",\n  \"In accordance with company policy, the {ENT} must display a {ATTR} of {VALUE}.\",\n  \"Based on the registrar's notes, the {ATTR} belonging to the {ENT} is {VALUE}.\",\n  \"Across all recent reports, the {ENT} shows a {ATTR} of {VALUE}.\",\n  \"During the recent review, the {ATTR} associated with the {ENT} was listed as {VALUE}.\",\n  \"Among the archived documents, the {ENT} appears with a {ATTR} of {VALUE}.\",\n  \"From the perspective of the asset manager, the {ATTR} of the {ENT} remains {VALUE}.\",\n  \"At the time of registration, the {ENT} received a {ATTR} of {VALUE}.\",\n  \"Throughout the service history, the {ENT} has kept its {ATTR} as {VALUE}.\",\n  \"On the master data sheet, the {ATTR} entered for the {ENT} is {VALUE}.\",\n  \"Upon completion of the survey, the {ENT} was confirmed to have a {ATTR} of {VALUE}.\",\n  \"Before the handover, the {ATTR} of the {ENT} was finalized as {VALUE}.\",\n  \"Without any recent amendments, the {ENT} retains a {ATTR} of {VALUE}.\"\n]\n```"
+   },
+   {
+    "style": "short plain statements by a technician or inspector; vary who reports it",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"The technician logged the {ATTR} of the {ENT} as {VALUE} during the morning walkthrough.\",\n  \"On site, the inspector confirmed the {ENT} has a {ATTR} of {VALUE}.\",\n  \"Maintenance staff recorded the {ATTR} for the {ENT} as {VALUE} in the shift notes.\",\n  \"The {ENT} was checked today, and its {ATTR} came back as {VALUE}.\",\n  \"Per the crew lead, the {ATTR} on the {ENT} is {VALUE}.\",\n  \"The {ENT} shows a {ATTR} of {VALUE}, noted by the on duty technician.\",\n  \"During inspection, we verified the {ATTR} of the {ENT} to be {VALUE}.\",\n  \"The {ENT} carries a {ATTR} of {VALUE}, according to the field report.\",\n  \"An operator confirmed that the {ENT} has the {ATTR} listed as {VALUE}.\",\n  \"The {ATTR} for the {ENT} was entered as {VALUE} by the night shift.\",\n  \"After the check, the inspector filed the {ATTR} of the {ENT} as {VALUE}.\",\n  \"The {ENT} was reviewed, and the {ATTR} was found to be {VALUE}.\",\n  \"Site records show the {ENT} with a {ATTR} of {VALUE}.\",\n  \"The apprentice noted the {ATTR} on the {ENT} as {VALUE} for the supervisor.\",\n  \"We updated the log so the {ENT} now shows the {ATTR} as {VALUE}.\",\n  \"The {ATTR} attached to the {ENT} is {VALUE}, per the lead inspector.\",\n  \"A technician reported that the {ATTR} of the {ENT} equals {VALUE}.\",\n  \"The {ENT} remains in service, with its {ATTR} documented as {VALUE}.\",\n  \"From the latest walkthrough, the {ENT} has the {ATTR} set to {VALUE}.\",\n  \"The crew verified the {ATTR} for the {ENT} and logged {VALUE} accordingly.\"\n]\n```"
+   },
+   {
+    "style": "put {ENT} at the very start or the very end of the sentence; mix both",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"The {ENT} was recorded with a {ATTR} of {VALUE} during the latest inventory audit.\",\n  \"Maintenance staff confirmed that the {ENT} has a {ATTR} listed as {VALUE}.\",\n  \"According to the equipment register, the {ENT} carries a {ATTR} of {VALUE}.\",\n  \"The official file for the {ENT} identifies its {ATTR} as {VALUE}.\",\n  \"Inspectors noted that the {ENT} showed a {ATTR} equal to {VALUE}.\",\n  \"A {ATTR} of {VALUE} was assigned to the {ENT} after installation.\",\n  \"The database entry for the {ENT} stores the {ATTR} under the value {VALUE}.\",\n  \"Records indicate that the {ENT} possesses a {ATTR} documented as {VALUE}.\",\n  \"For the {ENT}, the {ATTR} currently stands at {VALUE}.\",\n  \"The {ATTR} belonging to the {ENT} is officially recorded as {VALUE}.\",\n  \"Field technicians verified the {ATTR} of the {ENT} as {VALUE}.\",\n  \"Whoever updated the {ENT} entered a {ATTR} of {VALUE} in the system.\",\n  \"The {ENT} appears in the ledger with a {ATTR} noted as {VALUE}.\",\n  \"Documentation shows that the {ENT} was tagged with a {ATTR} of {VALUE}.\",\n  \"The supervisor logged the {ATTR} for the {ENT} as {VALUE}.\",\n  \"A {ATTR} value of {VALUE} is associated with the {ENT} in the catalog.\",\n  \"The {ENT} retains a {ATTR} that has remained {VALUE} since the last review.\",\n  \"An auditor cross-checked the {ATTR} of the {ENT} and found {VALUE}.\",\n  \"The {ENT} is distinguished by a {ATTR} recorded as {VALUE} in its profile.\",\n  \"Personnel responsible for the {ENT} reported its {ATTR} to be {VALUE}.\"\n]\n```"
+   },
+   {
+    "style": "documents and systems as the source (the asset database, the handover sheet, the audit file, the label plate)",
+    "n_parsed": 20,
+    "response": "[\n\"The asset database lists the {ENT} with a {ATTR} of {VALUE}.\",\n\"According to the handover sheet, the {ENT} has the {ATTR} {VALUE}.\",\n\"The audit file records the {ATTR} of the {ENT} as {VALUE}.\",\n\"Per the label plate, the {ENT} carries a {ATTR} of {VALUE}.\",\n\"The maintenance system shows that the {ENT} was assigned the {ATTR} {VALUE}.\",\n\"Documentation confirms the {ATTR} for the {ENT} is {VALUE}.\",\n\"The asset database entry for the {ENT} specifies the {ATTR} as {VALUE}.\",\n\"Records in the audit file identify the {ATTR} of the {ENT} to be {VALUE}.\",\n\"The handover sheet notes a {ATTR} of {VALUE} for the {ENT}.\",\n\"System data indicates that the {ENT} holds the {ATTR} {VALUE}.\",\n\"On the label plate, the {ENT} is stamped with the {ATTR} {VALUE}.\",\n\"The {ENT} appears in the asset database with a {ATTR} of {VALUE}.\",\n\"The audit file attributes a {ATTR} of {VALUE} to the {ENT}.\",\n\"Entries show the {ENT} documented with the {ATTR} {VALUE}.\",\n\"The handover sheet lists {VALUE} as the {ATTR} of the {ENT}.\",\n\"A {ATTR} of {VALUE} is registered for the {ENT} in the asset database.\",\n\"The system records the {ENT} under the {ATTR} {VALUE}.\",\n\"Official documentation states the {ENT} possesses a {ATTR} of {VALUE}.\",\n\"The label plate displays the {ATTR} {VALUE} for the {ENT}.\",\n\"Based on the audit file, the {ENT} is associated with the {ATTR} {VALUE}.\"\n]"
+   },
+   {
+    "style": "{VALUE} in the middle of the sentence, followed by a clause (e.g. '..., which ...', '... as of the last audit')",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"The {ENT} has a {ATTR} of {VALUE}, which was confirmed during the last inspection.\",\n  \"Records list the {ATTR} for the {ENT} as {VALUE}, as documented in the maintenance log.\",\n  \"The {ATTR} of the {ENT} is {VALUE}, according to the most recent equipment inventory.\",\n  \"For the {ENT}, the {ATTR} was recorded as {VALUE}, which the technician verified on site.\",\n  \"The {ENT} carries a {ATTR} of {VALUE}, as noted in the official asset register.\",\n  \"Current documentation shows the {ATTR} of the {ENT} as {VALUE}, which remains unchanged since installation.\",\n  \"The {ENT} was assigned a {ATTR} of {VALUE}, which appears in the procurement records.\",\n  \"Inspectors logged the {ATTR} for the {ENT} as {VALUE}, as of the last audit.\",\n  \"The {ATTR} belonging to the {ENT} stands at {VALUE}, which matches the original specification.\",\n  \"The {ENT} reports a {ATTR} of {VALUE}, as captured by the monitoring system.\",\n  \"Per the facility database, the {ENT} has a {ATTR} of {VALUE}, which was last validated this quarter.\",\n  \"The {ENT} holds a {ATTR} of {VALUE}, which the engineering team reviewed for accuracy.\",\n  \"Archive files indicate that the {ATTR} of the {ENT} is {VALUE}, as entered by the records clerk.\",\n  \"The {ATTR} associated with the {ENT} is {VALUE}, which has been cross-checked against the invoice.\",\n  \"The {ENT} displays a {ATTR} of {VALUE}, which operators reference during daily checks.\",\n  \"Documentation confirms that the {ENT} carries a {ATTR} of {VALUE}, as stated in the compliance report.\",\n  \"The {ENT} retains a {ATTR} of {VALUE}, which has not required any update since commissioning.\",\n  \"The {ATTR} assigned to the {ENT} is {VALUE}, as reflected in the current asset summary.\",\n  \"Supervisors recorded the {ATTR} of the {ENT} as {VALUE}, which was later approved by management.\",\n  \"The {ENT} is listed with a {ATTR} of {VALUE}, which the system flags as verified data.\"\n]\n```"
+   },
+   {
+    "style": "varied clause order: subordinate clause first, main clause second",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"After the inspection was finished, the crew recorded the {ATTR} of the {ENT} as {VALUE}.\",\n  \"Because the records had to stay current, the supervisor updated the {ATTR} for the {ENT} to {VALUE}.\",\n  \"Whenever auditors request documentation, the plant provides the {ATTR} of the {ENT}, which currently reads {VALUE}.\",\n  \"Once the paperwork was verified, the clerk confirmed that the {ENT} carries the {ATTR} {VALUE}.\",\n  \"Although several entries were missing, the log clearly shows the {ATTR} of the {ENT} as {VALUE}.\",\n  \"If anyone questions the paperwork, they can check the {ATTR} of the {ENT}, officially listed as {VALUE}.\",\n  \"Before the file was archived, the engineer noted that the {ENT} has the {ATTR} {VALUE}.\",\n  \"Since accuracy matters in these records, the database lists the {ATTR} of the {ENT} as {VALUE}.\",\n  \"When the new system went live, it assigned the {ENT} a {ATTR} of {VALUE}.\",\n  \"While reviewing the maintenance history, the technician found the {ATTR} of the {ENT} recorded as {VALUE}.\",\n  \"As part of the annual audit, the inspector verified that the {ENT} bears the {ATTR} {VALUE}.\",\n  \"Even though the entry was disputed, the official paperwork names {VALUE} as the {ATTR} of the {ENT}.\",\n  \"Given that all equipment must be catalogued, the registrar entered the {ATTR} of the {ENT} as {VALUE}.\",\n  \"Following the update procedure, the system now displays the {ATTR} of the {ENT} as {VALUE}.\",\n  \"So that future crews have clear records, the log documents the {ATTR} of the {ENT} as {VALUE}.\",\n  \"Unless someone corrects the file, it will keep showing the {ATTR} of the {ENT} as {VALUE}.\",\n  \"Wherever the archive is consulted, readers will find the {ATTR} of the {ENT} listed as {VALUE}.\",\n  \"Provided that the form was filled out properly, the {ENT} should show a {ATTR} of {VALUE}.\",\n  \"Now that the records have been digitized, anyone can see the {ATTR} of the {ENT}, which is {VALUE}.\",\n  \"In case the detail was overlooked earlier, let it be noted that the {ENT} has the {ATTR} {VALUE}.\"\n]\n```"
+   }
+  ]
+ },
+ "question": {
+  "accepted": [
+   "What is the {ATTR} of the {ENT}?",
+   "Which value is recorded for the {ATTR} of the {ENT}?",
+   "What value should I enter for the {ATTR} of the {ENT}?",
+   "What information does the file give about the {ATTR} of the {ENT}?",
+   "Which entry in the system shows the {ATTR} of the {ENT}?",
+   "What did the inspection report state about the {ATTR} of the {ENT}?",
+   "Which field contains the {ATTR} of the {ENT}?",
+   "What has been documented regarding the {ATTR} of the {ENT}?",
+   "What can you tell me about the {ATTR} of the {ENT}?",
+   "Which detail does the database provide for the {ATTR} of the {ENT}?",
+   "What value appears in the documentation for the {ATTR} of the {ENT}?",
+   "What is the recorded {ATTR} for the {ENT}?",
+   "Which data point identifies the {ATTR} of the {ENT}?",
+   "What should the maintenance log show for the {ATTR} of the {ENT}?",
+   "What does the latest record indicate about the {ATTR} of the {ENT}?",
+   "Which item in the report corresponds to the {ATTR} of the {ENT}?",
+   "What figure was logged for the {ATTR} of the {ENT}?",
+   "What details are available concerning the {ATTR} of the {ENT}?",
+   "Could you tell me the {ATTR} of the {ENT}?",
+   "I need the {ATTR} of the {ENT}.",
+   "Would you mind finding out the {ATTR} for the {ENT}?",
+   "Can you confirm what the {ATTR} of the {ENT} is?",
+   "I was hoping you could retrieve the {ATTR} for the {ENT}.",
+   "Could you check the {ENT} and report its {ATTR}?",
+   "I would appreciate it if you could verify the {ATTR} of the {ENT}.",
+   "Could you pull up the {ATTR} associated with the {ENT}?",
+   "Kindly share the {ATTR} on file for the {ENT}.",
+   "May I ask what the {ATTR} of the {ENT} is?",
+   "Would you be able to locate the {ATTR} for the {ENT}?",
+   "I need you to confirm the {ATTR} shown for the {ENT}.",
+   "Could you let me know the {ATTR} tied to the {ENT}?",
+   "Please find the {ENT} and give me its {ATTR}.",
+   "I am trying to determine the {ATTR} of the {ENT}.",
+   "Can you help me track down the {ATTR} for the {ENT}?",
+   "Would it be possible for you to supply the {ATTR} of the {ENT}?",
+   "Does the log record the {ATTR} of the {ENT}?",
+   "Can you find the {ATTR} for the {ENT} in the register?",
+   "Where in the file is the {ATTR} of the {ENT} listed?",
+   "Is the {ATTR} of the {ENT} documented anywhere in the log?",
+   "What does the register say about the {ATTR} of the {ENT}?",
+   "According to the file, what is the {ATTR} of the {ENT}?",
+   "Which entry in the log covers the {ATTR} of the {ENT}?",
+   "Does the file contain the {ATTR} for the {ENT}, and what is it?",
+   "Look up the {ATTR} of the {ENT} in the register.",
+   "Check the log and report the {ATTR} of the {ENT}.",
+   "Please retrieve the {ATTR} of the {ENT} from the file.",
+   "Search the register for the {ATTR} of the {ENT}.",
+   "In which document would the {ATTR} of the {ENT} appear?",
+   "Was the {ATTR} of the {ENT} ever noted in the log?",
+   "How is the {ATTR} of the {ENT} shown in the register?",
+   "Under what section does the file list the {ATTR} of the {ENT}?",
+   "If the log mentions the {ENT}, what is its {ATTR}?",
+   "Confirm the {ATTR} of the {ENT} using the register.",
+   "The file should state the {ATTR} of the {ENT}, so what is it?",
+   "Which page of the log shows the {ATTR} of the {ENT}?",
+   "For the {ENT}, what is the {ATTR}?",
+   "For the {ENT}, could you provide the {ATTR}?",
+   "For the {ENT}, what does the record list as the {ATTR}?",
+   "For the {ENT}, how is the {ATTR} recorded?",
+   "For the {ENT}, can you confirm the {ATTR}?",
+   "For the {ENT}, what value is shown for the {ATTR}?",
+   "For the {ENT}, please look up the {ATTR}.",
+   "For the {ENT}, where can I find the {ATTR}?",
+   "For the {ENT}, what was entered as the {ATTR}?",
+   "For the {ENT}, does the file include the {ATTR}?",
+   "For the {ENT}, what is the current {ATTR}?",
+   "For the {ENT}, could you verify the {ATTR} for me?",
+   "For the {ENT}, what does the system show under the {ATTR}?",
+   "For the {ENT}, is the {ATTR} available in the records?",
+   "For the {ENT}, what should I enter for the {ATTR}?",
+   "For the {ENT}, retrieve the {ATTR} from the database.",
+   "For the {ENT}, what is listed regarding the {ATTR}?",
+   "For the {ENT}, do we have an updated {ATTR}?",
+   "For the {ENT}, please report the {ATTR} from the latest inspection.",
+   "For the {ENT}, what did the technician record for the {ATTR}?"
+  ],
+  "rejected": [
+   {
+    "t": "What does the record list as the {ATTR} for the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "What is currently on file as the {ATTR} for the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Please look up the {ATTR} for the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Please provide the {ATTR} recorded for the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Do you know the {ATTR} listed for the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   }
+  ],
+  "raw": [
+   {
+    "style": "direct wh-questions with different openers (What, Which, Who/When only if it fits any attribute)",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"What is the {ATTR} of the {ENT}?\",\n  \"What does the record list as the {ATTR} for the {ENT}?\",\n  \"Which value is recorded for the {ATTR} of the {ENT}?\",\n  \"What value should I enter for the {ATTR} of the {ENT}?\",\n  \"What information does the file give about the {ATTR} of the {ENT}?\",\n  \"Which entry in the system shows the {ATTR} of the {ENT}?\",\n  \"What is currently on file as the {ATTR} for the {ENT}?\",\n  \"What did the inspection report state about the {ATTR} of the {ENT}?\",\n  \"Which field contains the {ATTR} of the {ENT}?\",\n  \"What has been documented regarding the {ATTR} of the {ENT}?\",\n  \"What can you tell me about the {ATTR} of the {ENT}?\",\n  \"Which detail does the database provide for the {ATTR} of the {ENT}?\",\n  \"What value appears in the documentation for the {ATTR} of the {ENT}?\",\n  \"What is the recorded {ATTR} for the {ENT}?\",\n  \"Which data point identifies the {ATTR} of the {ENT}?\",\n  \"What should the maintenance log show for the {ATTR} of the {ENT}?\",\n  \"What does the latest record indicate about the {ATTR} of the {ENT}?\",\n  \"Which item in the report corresponds to the {ATTR} of the {ENT}?\",\n  \"What figure was logged for the {ATTR} of the {ENT}?\",\n  \"What details are available concerning the {ATTR} of the {ENT}?\"\n]\n```"
+   },
+   {
+    "style": "polite requests and indirect questions (Could you ..., I need ..., Please look up ...)",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"Could you tell me the {ATTR} of the {ENT}?\",\n  \"Please look up the {ATTR} for the {ENT}.\",\n  \"I need the {ATTR} of the {ENT}.\",\n  \"Would you mind finding out the {ATTR} for the {ENT}?\",\n  \"Can you confirm what the {ATTR} of the {ENT} is?\",\n  \"I was hoping you could retrieve the {ATTR} for the {ENT}.\",\n  \"Could you check the {ENT} and report its {ATTR}?\",\n  \"Please provide the {ATTR} recorded for the {ENT}.\",\n  \"Do you know the {ATTR} listed for the {ENT}?\",\n  \"I would appreciate it if you could verify the {ATTR} of the {ENT}.\",\n  \"Could you pull up the {ATTR} associated with the {ENT}?\",\n  \"Kindly share the {ATTR} on file for the {ENT}.\",\n  \"May I ask what the {ATTR} of the {ENT} is?\",\n  \"Would you be able to locate the {ATTR} for the {ENT}?\",\n  \"I need you to confirm the {ATTR} shown for the {ENT}.\",\n  \"Could you let me know the {ATTR} tied to the {ENT}?\",\n  \"Please find the {ENT} and give me its {ATTR}.\",\n  \"I am trying to determine the {ATTR} of the {ENT}.\",\n  \"Can you help me track down the {ATTR} for the {ENT}?\",\n  \"Would it be possible for you to supply the {ATTR} of the {ENT}?\"\n]\n```"
+   },
+   {
+    "style": "questions mentioning a record or document as the source (the register, the log, the file)",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"Does the log record the {ATTR} of the {ENT}?\",\n  \"Can you find the {ATTR} for the {ENT} in the register?\",\n  \"Where in the file is the {ATTR} of the {ENT} listed?\",\n  \"Is the {ATTR} of the {ENT} documented anywhere in the log?\",\n  \"What does the register say about the {ATTR} of the {ENT}?\",\n  \"According to the file, what is the {ATTR} of the {ENT}?\",\n  \"Which entry in the log covers the {ATTR} of the {ENT}?\",\n  \"Does the file contain the {ATTR} for the {ENT}, and what is it?\",\n  \"Look up the {ATTR} of the {ENT} in the register.\",\n  \"Check the log and report the {ATTR} of the {ENT}.\",\n  \"Please retrieve the {ATTR} of the {ENT} from the file.\",\n  \"Search the register for the {ATTR} of the {ENT}.\",\n  \"In which document would the {ATTR} of the {ENT} appear?\",\n  \"Was the {ATTR} of the {ENT} ever noted in the log?\",\n  \"How is the {ATTR} of the {ENT} shown in the register?\",\n  \"Under what section does the file list the {ATTR} of the {ENT}?\",\n  \"If the log mentions the {ENT}, what is its {ATTR}?\",\n  \"Confirm the {ATTR} of the {ENT} using the register.\",\n  \"The file should state the {ATTR} of the {ENT}, so what is it?\",\n  \"Which page of the log shows the {ATTR} of the {ENT}?\"\n]\n```"
+   },
+   {
+    "style": "questions that put {ENT} first, e.g. 'For the {ENT}, ...'",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"For the {ENT}, what is the {ATTR}?\",\n  \"For the {ENT}, could you provide the {ATTR}?\",\n  \"For the {ENT}, what does the record list as the {ATTR}?\",\n  \"For the {ENT}, how is the {ATTR} recorded?\",\n  \"For the {ENT}, can you confirm the {ATTR}?\",\n  \"For the {ENT}, what value is shown for the {ATTR}?\",\n  \"For the {ENT}, please look up the {ATTR}.\",\n  \"For the {ENT}, where can I find the {ATTR}?\",\n  \"For the {ENT}, what was entered as the {ATTR}?\",\n  \"For the {ENT}, does the file include the {ATTR}?\",\n  \"For the {ENT}, what is the current {ATTR}?\",\n  \"For the {ENT}, could you verify the {ATTR} for me?\",\n  \"For the {ENT}, what does the system show under the {ATTR}?\",\n  \"For the {ENT}, is the {ATTR} available in the records?\",\n  \"For the {ENT}, what should I enter for the {ATTR}?\",\n  \"For the {ENT}, retrieve the {ATTR} from the database.\",\n  \"For the {ENT}, what is listed regarding the {ATTR}?\",\n  \"For the {ENT}, do we have an updated {ATTR}?\",\n  \"For the {ENT}, please report the {ATTR} from the latest inspection.\",\n  \"For the {ENT}, what did the technician record for the {ATTR}?\"\n]\n```"
+   }
+  ]
+ }
+}

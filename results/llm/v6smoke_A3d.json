@@ -1,0 +1,614 @@
+{
+ "config": {
+  "run_name": "v6smoke_A3d",
+  "base_model": "Qwen/Qwen2-0.5B",
+  "insert": "mid",
+  "insert_layer": -1,
+  "seg_len": 256,
+  "max_ctx_segments": 8,
+  "mem_mode": "B",
+  "mem_hidden": 256,
+  "mem_layers": 2,
+  "rank": 8,
+  "chunk_size": 32,
+  "tbptt_chunks": 0,
+  "shift_v": true,
+  "inner_lr": 0.2,
+  "inner_clip": 0.1,
+  "use_momentum": false,
+  "second_order": true,
+  "retention_bias": 4.0,
+  "retention_learned": true,
+  "aux_weight": 0.1,
+  "key_mode": "composite",
+  "pool": "attn",
+  "read_cap": 64,
+  "mask_cross_pair": true,
+  "key_loss_weight": 0.1,
+  "init_ckpt": "/vol/llm/b_full_s0/b_full_s0_memory.pt",
+  "abort_step": 6,
+  "abort_min_gain": -100.0,
+  "ablate_key_part": "none",
+  "context_only_key": false,
+  "force_gate": "none",
+  "force_gate_value": 1.0,
+  "ckpt_steps": "",
+  "train_mode": "memory",
+  "contrast_weight": 0.0,
+  "contrast_margin": 1.0,
+  "crop": true,
+  "crop_curriculum": 0.5,
+  "crop_pre_tokens": 48,
+  "crop_d_min": 32,
+  "mix": "long_context:0.16667,dialogue:0.16667,agentic:0.16667,prog2_colliding:0.25,prog2_overwrite:0.15,prog2_single:0.1",
+  "eval_types": "long_context,dialogue,agentic",
+  "crop_annotated": false,
+  "data_dir": "/data/miniTitan_data",
+  "types": "long_context,dialogue,agentic,prog2_colliding,prog2_overwrite,prog2_single",
+  "val_per_type": 6,
+  "gen_eval_per_type": 3,
+  "seed": 0,
+  "split_seed": 0,
+  "batch_size": 2,
+  "steps": 12,
+  "lr": 0.0003,
+  "warmup": 100,
+  "grad_clip": 1.0,
+  "log_every": 2,
+  "eval_every": 1000000000,
+  "eval_batches": 12,
+  "gen_max_new": 8,
+  "save_ckpt": false,
+  "out_dir": "/vol/llm/v6smoke_A3d"
+ },
+ "git_sha": "f9b5824-dirty",
+ "memory_params": 4763108,
+ "state_floats": 458752,
+ "warm_start": {
+  "from": "/vol/llm/b_full_s0/b_full_s0_memory.pt",
+  "new_params": [
+   "W_c.weight",
+   "pool_proj.weight",
+   "pool_u.weight"
+  ]
+ },
+ "abort": {
+  "step": 6,
+  "doc_specific_gain": 2.3165577355151377,
+  "aborted": false
+ },
+ "curve": [
+  {
+   "step": 2,
+   "nll": 1.7515414953231812,
+   "grad_norm": 13.814483642578125,
+   "nll_on_batch": 1.8810850381851196,
+   "swap_gap_batch": null,
+   "time_s": 2.1809475421905518,
+   "mem_gb": 4.015613952,
+   "mean_write_gate": 0.0790937633253634,
+   "retention_halflife_tokens": 3764.7273090066124,
+   "state_norm_ratio": 0.1263580322265625,
+   "mean_blend": 0.695317917317152,
+   "mean_surprise": 0.8581808939576149,
+   "W_c_norm": 0.0026869832072407007,
+   "key_local_norm": 19.846567106246948,
+   "key_ctx_norm": 0.005250866361893714,
+   "capped_sentence_share": 0.0,
+   "key_loss": 0.0
+  },
+  {
+   "step": 4,
+   "nll": 3.1664127111434937,
+   "grad_norm": 4.469262599945068,
+   "nll_on_batch": 2.127293825149536,
+   "swap_gap_batch": null,
+   "time_s": 2.8920857906341553,
+   "mem_gb": 4.582318592,
+   "mean_write_gate": 0.0889644268900156,
+   "retention_halflife_tokens": 47912.99880583434,
+   "state_norm_ratio": 0.11164101958274841,
+   "mean_blend": 0.7035801857709885,
+   "mean_surprise": 0.45022619515657425,
+   "W_c_norm": 0.009498384781181812,
+   "key_local_norm": 19.784154295921326,
+   "key_ctx_norm": 0.015136966481804848,
+   "capped_sentence_share": 0.0,
+   "key_loss": 0.0
+  },
+  {
+   "step": 6,
+   "nll": 2.0260565876960754,
+   "grad_norm": 2.7981598377227783,
+   "nll_on_batch": 2.194599151611328,
+   "swap_gap_batch": null,
+   "time_s": 4.618125915527344,
+   "mem_gb": 4.582318592,
+   "mean_write_gate": 0.1255746898241341,
+   "retention_halflife_tokens": 47249.58428889369,
+   "state_norm_ratio": 0.12176939845085144,
+   "mean_blend": 0.6463564299046993,
+   "mean_surprise": 0.6301205083727837,
+   "W_c_norm": 0.017637474462389946,
+   "key_local_norm": 20.03658699989319,
+   "key_ctx_norm": 0.03504736424656585,
+   "capped_sentence_share": 0.0,
+   "key_loss": 0.0
+  },
+  {
+   "step": 8,
+   "nll": 2.0085676312446594,
+   "grad_norm": 4.054558277130127,
+   "nll_on_batch": 1.7754606008529663,
+   "swap_gap_batch": null,
+   "time_s": 5.301702260971069,
+   "mem_gb": 4.666789888,
+   "mean_write_gate": 0.13360375445336103,
+   "retention_halflife_tokens": 45199.765131865955,
+   "state_norm_ratio": 0.13405123353004456,
+   "mean_blend": 0.6797970607876778,
+   "mean_surprise": 0.5471276491880417,
+   "W_c_norm": 0.024663139134645462,
+   "key_local_norm": 20.583263278007507,
+   "key_ctx_norm": 0.057314600329846144,
+   "capped_sentence_share": 0.11764705882352941,
+   "key_loss": 0.0
+  },
+  {
+   "step": 10,
+   "nll": 1.7518938779830933,
+   "grad_norm": 14.45156478881836,
+   "nll_on_batch": 1.8002183437347412,
+   "swap_gap_batch": null,
+   "time_s": 5.970759153366089,
+   "mem_gb": 4.666789888,
+   "mean_write_gate": 0.06830557039938867,
+   "retention_halflife_tokens": 22180698.68692369,
+   "state_norm_ratio": 0.14450684189796448,
+   "mean_blend": 0.5355869928995768,
+   "mean_surprise": 0.7763319462537766,
+   "W_c_norm": 0.029165059328079224,
+   "key_local_norm": 20.96226465702057,
+   "key_ctx_norm": 0.09766315948218107,
+   "capped_sentence_share": 0.0,
+   "key_loss": 0.36711254715919495
+  },
+  {
+   "step": 12,
+   "nll": 1.489495575428009,
+   "grad_norm": 20.8561954498291,
+   "nll_on_batch": 1.321104645729065,
+   "swap_gap_batch": null,
+   "time_s": 7.024738311767578,
+   "mem_gb": 4.762351104,
+   "mean_write_gate": 0.09117534310956087,
+   "retention_halflife_tokens": 3760.7853324281837,
+   "state_norm_ratio": 0.16125798225402832,
+   "mean_blend": 0.6980952647115503,
+   "mean_surprise": 0.8108771826539721,
+   "W_c_norm": 0.03161599487066269,
+   "key_local_norm": 19.93891998699733,
+   "key_ctx_norm": 0.07216968187796217,
+   "capped_sentence_share": 0.0,
+   "key_loss": 0.9801272749900818
+  }
+ ],
+ "quick_eval": [],
+ "final": {
+  "long_context": {
+   "n_val": 6,
+   "nll": {
+    "none": 3.681455115477244,
+    "off": 2.691839118798574,
+    "swap": 3.2291213870048523,
+    "on": 0.9384438761820396,
+    "oracle": 0.5606608986854553
+   },
+   "ppl": {
+    "none": 39.7041261474357,
+    "off": 14.75879415174321,
+    "swap": 25.25745569043033,
+    "on": 2.5560008681883635,
+    "oracle": 1.75182989987001
+   },
+   "nll_gain_on_vs_none": 2.743011239295204,
+   "nll_gain_on_vs_off": 1.7533952426165342,
+   "nll_gain_on_vs_swap": 2.2906775108228126,
+   "frac_gain_recovered": 0.8789465273090163,
+   "doc_specific_share": 0.8350959259690764,
+   "nll_by_n_segments": {
+    "5": {
+     "none": 3.6238441467285156,
+     "off": 2.4984999895095825,
+     "swap": 3.1178746223449707,
+     "on": 0.8927360195666552,
+     "oracle": 0.5373481214046478,
+     "count": 2
+    },
+    "6": {
+     "none": 3.0630584955215454,
+     "off": 2.3872705698013306,
+     "swap": 2.7915687958399453,
+     "on": 0.7376043324669203,
+     "oracle": 0.528418223063151,
+     "count": 3
+    },
+    "7": {
+     "none": 5.651866912841797,
+     "off": 3.992223024368286,
+     "swap": 4.764272689819336,
+     "on": 1.6323782205581665,
+     "oracle": 0.7040144801139832,
+     "count": 1
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 2.922989010810852,
+     "off": 2.053075114885966,
+     "swap": 2.5950320959091187,
+     "on": 0.6357119418680668,
+     "oracle": 0.5142425497372946,
+     "count": 3
+    },
+    "1024+": {
+     "none": 4.840892791748047,
+     "off": 3.5606199502944946,
+     "swap": 4.103518009185791,
+     "on": 1.3965094685554504,
+     "oracle": 0.7480133175849915,
+     "count": 2
+    },
+    "<256": {
+     "none": 3.6379780769348145,
+     "off": 2.8705694675445557,
+     "swap": 3.382596015930176,
+     "on": 0.9305084943771362,
+     "oracle": 0.3252111077308655,
+     "count": 1
+    }
+   },
+   "nll_by_fact_position": {
+    "early": {
+     "none": 3.69015052318573,
+     "off": 2.6560930490493773,
+     "swap": 3.1984264612197877,
+     "on": 0.9400309525430203,
+     "oracle": 0.6077508568763733,
+     "count": 5
+    },
+    "late": {
+     "none": 3.6379780769348145,
+     "off": 2.8705694675445557,
+     "swap": 3.382596015930176,
+     "on": 0.9305084943771362,
+     "oracle": 0.3252111077308655,
+     "count": 1
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.04761904761904762,
+     "digit_recall": 0.0
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.2222222222222222,
+     "digit_recall": 0.16666666666666666
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.0,
+     "digit_recall": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "1809"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The desalination plant desperately needed to"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the chemical concentration reading"
+     }
+    ],
+    "on": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "October 14, 19"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "4,200 kilograms"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "03:14 AM"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "October 14, 1939",
+      "pred": "Elias Vogt was recognized for his service"
+     },
+     {
+      "gold": "titanium flow-valve assembly TX-7704",
+      "pred": "The specific part that the desalination"
+     },
+     {
+      "gold": "Vanadium pentoxide concentration of 4.2 ppm",
+      "pred": "The investigator initially dismissed the titanium dioxide reading"
+     }
+    ]
+   }
+  },
+  "dialogue": {
+   "n_val": 6,
+   "nll": {
+    "none": 2.4704445401827493,
+    "off": 2.2238665421803794,
+    "swap": 2.3123538494110107,
+    "on": 1.7800554633140564,
+    "oracle": 1.1073075632254283
+   },
+   "ppl": {
+    "none": 11.827703572655627,
+    "off": 9.243000313316806,
+    "swap": 10.098166264679117,
+    "on": 5.930185317200818,
+    "oracle": 3.026199564802497
+   },
+   "nll_gain_on_vs_none": 0.6903890768686929,
+   "nll_gain_on_vs_off": 0.443811078866323,
+   "nll_gain_on_vs_swap": 0.5322983860969543,
+   "frac_gain_recovered": 0.5064708012027676,
+   "doc_specific_share": 0.7710121783954496,
+   "nll_by_n_segments": {
+    "3": {
+     "none": 2.3266648948192596,
+     "off": 2.0843706130981445,
+     "swap": 2.1591736674308777,
+     "on": 1.7855085730552673,
+     "oracle": 1.2088883221149445,
+     "count": 4
+    },
+    "4": {
+     "none": 2.758003830909729,
+     "off": 2.5028584003448486,
+     "swap": 2.618714213371277,
+     "on": 1.7691492438316345,
+     "oracle": 0.9041460454463959,
+     "count": 2
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 2.709052038192749,
+     "off": 2.4171030521392822,
+     "swap": 2.505882501602173,
+     "on": 1.9329544305801392,
+     "oracle": 1.2315717577934264,
+     "count": 5
+    },
+    "256-512": {
+     "none": 1.2774070501327515,
+     "off": 1.2576839923858643,
+     "swap": 1.3447105884552002,
+     "on": 1.0155606269836426,
+     "oracle": 0.485986590385437,
+     "count": 1
+    }
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.3489683231618716,
+     "digit_recall": 0.0
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.2526881720430107,
+     "digit_recall": 0.0
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.34681003584229386,
+     "digit_recall": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a new car"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set up the system"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on a"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a 2"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to log in as '"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focused on a"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Mark is trying to purchase a 2024 Subaru Outback Wilderness in Geyser Blue, and ",
+      "pred": "Mark is trying to purchase a 2"
+     },
+     {
+      "gold": "They need to use the system ID Delta-77-Echo and set the baseline alert threshol",
+      "pred": "The user needs to set their ID for"
+     },
+     {
+      "gold": "The project is focusing on the Type 2 Diabetes patient journey, and the strict b",
+      "pred": "The VR consultation project is focusing on Type"
+     }
+    ]
+   }
+  },
+  "agentic": {
+   "n_val": 6,
+   "nll": {
+    "none": 4.2179999351501465,
+    "off": 2.708183844884237,
+    "swap": 2.8313216169675193,
+    "on": 2.085787018140157,
+    "oracle": 2.4307113687197366
+   },
+   "ppl": {
+    "none": 67.8975488939972,
+    "off": 15.002004790691322,
+    "swap": 16.96787103868685,
+    "on": 8.0509252131778,
+    "oracle": 11.3669653081413
+   },
+   "nll_gain_on_vs_none": 2.1322129170099893,
+   "nll_gain_on_vs_off": 0.6223968267440796,
+   "nll_gain_on_vs_swap": 0.7455345988273621,
+   "frac_gain_recovered": 1.192987499085537,
+   "doc_specific_share": 0.3496529792497591,
+   "nll_by_n_segments": {
+    "2": {
+     "none": 4.594943364461263,
+     "off": 2.7581072648366294,
+     "swap": 2.926403840382894,
+     "on": 2.0291083653767905,
+     "oracle": 2.6734946568806968,
+     "count": 3
+    },
+    "3": {
+     "none": 3.84105650583903,
+     "off": 2.6582604249318442,
+     "swap": 2.7362393935521445,
+     "on": 2.142465670903524,
+     "oracle": 2.187928080558777,
+     "count": 3
+    }
+   },
+   "nll_by_fact_distance": {
+    "512-1024": {
+     "none": 3.84105650583903,
+     "off": 2.6582604249318442,
+     "swap": 2.7362393935521445,
+     "on": 2.142465670903524,
+     "oracle": 2.187928080558777,
+     "count": 3
+    },
+    "256-512": {
+     "none": 4.594943364461263,
+     "off": 2.7581072648366294,
+     "swap": 2.926403840382894,
+     "on": 2.0291083653767905,
+     "oracle": 2.6734946568806968,
+     "count": 3
+    }
+   },
+   "pref_acc": {
+    "none": 0.6666666666666666,
+    "off": 0.8333333333333334,
+    "swap": 0.8333333333333334,
+    "on": 0.8333333333333334,
+    "oracle": 0.8333333333333334
+   },
+   "generation": {
+    "none": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.16566113624937154,
+     "digit_recall": 0.0
+    },
+    "on": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.15528985507246376,
+     "digit_recall": 0.0
+    },
+    "oracle": {
+     "em": 0.0,
+     "contains": 0.0,
+     "f1": 0.19130216189039717,
+     "digit_recall": 0.0
+    }
+   },
+   "generation_examples": {
+    "none": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to continue the process"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the process"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue the process"
+     }
+    ],
+    "on": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "Execute the python script using the specific '"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "Use the original primary dataset ID 'd"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "Execute the script using the '--no-"
+     }
+    ],
+    "oracle": [
+     {
+      "gold": "Execute curl to Snowflake SQL API calling SYSTEM$ABORT_SESSION(8829104) using th",
+      "pred": "The correct decision is to release the lock"
+     },
+     {
+      "gold": "Execute validate_data_integrity.py using the exact UTC timestamp '2023-11-15T09:",
+      "pred": "The correct decision is to continue the backup"
+     },
+     {
+      "gold": "Provide the exact report path from step 1 and enclose it in double quotes (e.g.,",
+      "pred": "The correct decision is to continue with the"
+     }
+    ]
+   }
+  }
+ },
+ "skipped_nonfinite_steps": 0,
+ "train_time_s": 7.025252342224121,
+ "wall_time_s": 31.20332431793213,
+ "peak_gpu_gb": 4.762351104,
+ "versions": {
+  "torch": "2.15.0+cu132",
+  "transformers": "5.22.2"
+ }
+}

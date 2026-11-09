@@ -1,0 +1,631 @@
+{
+ "model": "accounts/fireworks/routers/kimi-k3-fast",
+ "seed": 33,
+ "excluded_against": "v2 templates + all training templates (templates/train_glm.json)",
+ "prompts": {
+  "fact": "You are writing reusable sentence TEMPLATES for a synthetic dataset about industrial equipment records.\nEach template states ONE attribute value of ONE piece of equipment and uses exactly these three placeholders, each exactly once:\n  {{ENT}}   a bare noun phrase naming the equipment item, WITHOUT an article (e.g. \"boiler at Mesa 4\"), so write \"the {{ENT}}\"\n  {{ATTR}}  a bare attribute name WITHOUT an article (e.g. \"serial number\", \"replacement cost\"), so write \"the {{ATTR}}\" or \"a {{ATTR}}\"\n  {{VALUE}} the value itself (e.g. \"QY-1234-B\", \"March 3, 2021\", \"Hana Vogt\")\nRules: exactly one sentence ending with a period; {{VALUE}} must NOT be the first word of the sentence; no other placeholders,\nno digits, no quotation marks, no line breaks; 8 to 25 words; the sentence must make sense for any attribute and any equipment.\nStyle for this batch: {style}\nWrite {n} templates that differ from each other in structure, not just in wording. Return ONLY a JSON array of strings.",
+  "question": "You are writing reusable QUESTION templates for a synthetic dataset about industrial equipment records.\nEach template asks for ONE attribute of ONE piece of equipment and uses exactly these two placeholders, each exactly once:\n  {{ENT}}   a bare noun phrase naming the equipment item, WITHOUT an article (e.g. \"boiler at Mesa 4\"), so write \"the {{ENT}}\"\n  {{ATTR}}  a bare attribute name WITHOUT an article (e.g. \"serial number\"), so write \"the {{ATTR}}\"\nRules: exactly one sentence, ending with \"?\" (a question) or \".\" (a request); no other placeholders, no digits, no quotation marks;\n5 to 18 words; it must make sense for any attribute and any equipment.\nStyle for this batch: {style}\nWrite {n} templates that differ from each other in structure, not just in wording. Return ONLY a JSON array of strings."
+ },
+ "fact": {
+  "accepted": [
+   "The service file shows that the {ENT} has {VALUE} entered under the {ATTR}.",
+   "Under the {ATTR}, the technician notes {VALUE} for the {ENT}.",
+   "Per the latest entry, {VALUE} is specified as the {ATTR} of the {ENT}.",
+   "The {ENT} is logged with {VALUE} recorded in the field for the {ATTR}.",
+   "In the maintenance ledger, the {ATTR} belonging to the {ENT} reads {VALUE}.",
+   "The checklist confirms that the {ATTR} on the {ENT} matches {VALUE}.",
+   "For audit purposes, the {ENT} carries {VALUE} beside the labeled {ATTR}.",
+   "The work order specifies {VALUE} as the current {ATTR} assigned to the {ENT}.",
+   "On the equipment card, the {ENT} lists {VALUE} beneath the heading for the {ATTR}.",
+   "The database entry for the {ENT} gives {VALUE} where the {ATTR} is required.",
+   "As noted by the inspector, the {ATTR} of the {ENT} remains {VALUE}.",
+   "The service summary records {VALUE} against the {ATTR} field for the {ENT}.",
+   "Within the plant registry, the {ENT} shows the {ATTR} set to {VALUE}.",
+   "The compliance form notes that {VALUE} applies to the {ATTR} of the {ENT}.",
+   "Beside the {ATTR} label, the {ENT} is marked with {VALUE} in the logbook.",
+   "The shift report enters {VALUE} under the {ATTR} column reserved for the {ENT}.",
+   "The {ATTR} was updated to {VALUE} after the {ENT} was inspected.",
+   "In the maintenance system, {VALUE} was stored as the {ATTR} of the {ENT}.",
+   "The {ATTR} for the {ENT} was reported by the technician as {VALUE}.",
+   "The {ATTR} was certified as {VALUE} for the {ENT} by the inspector.",
+   "The {ATTR} of the {ENT} has been set to {VALUE} in the registry.",
+   "After review, the {ATTR} of the {ENT} was amended to read {VALUE}.",
+   "The {ATTR} was transcribed as {VALUE} onto the record for the {ENT}.",
+   "Following the quarterly audit, the {ATTR} for the {ENT} was updated to {VALUE}.",
+   "As of the most recent review, the {ENT} has a {ATTR} equal to {VALUE}.",
+   "According to procurement records, {VALUE} was entered as the {ATTR} of the {ENT}.",
+   "As of the last calibration cycle, the {ATTR} assigned to the {ENT} reads {VALUE}.",
+   "In the service history file, {VALUE} appears as the {ATTR} belonging to the {ENT}.",
+   "Following verification by the site engineer, the {ATTR} of the {ENT} now stands at {VALUE}.",
+   "As of the annual inventory check, the {ENT} was documented with a {ATTR} of {VALUE}.",
+   "In the operations handbook, the {ENT} is described as having a {ATTR} set to {VALUE}.",
+   "Following the installation review, the {ATTR} reported for the {ENT} became {VALUE}.",
+   "As of the compliance assessment, {VALUE} serves as the official {ATTR} of the {ENT}.",
+   "In the spare parts catalog, the {ATTR} tied to the {ENT} is given as {VALUE}.",
+   "As of yesterday's diagnostic run, the {ATTR} measured on the {ENT} returned {VALUE}.",
+   "I checked the {ENT} today and found the {ATTR} to be {VALUE}.",
+   "As inspector, I can confirm the {ENT} carries the {ATTR} {VALUE}.",
+   "My supervisor asked me to verify the {ATTR} of the {ENT}, which came out to {VALUE}.",
+   "For audit purposes, the {ENT} shows a {ATTR} equal to {VALUE}.",
+   "Technician note: the {ATTR} on the {ENT} reads {VALUE}.",
+   "Per the inspection sheet, {VALUE} is the current {ATTR} of the {ENT}.",
+   "I can vouch that the {ENT} is registered with the {ATTR} {VALUE}.",
+   "The {ENT} has the {ATTR} recorded as {VALUE}.",
+   "The {ENT} shows the {ATTR} as {VALUE} in the current register.",
+   "The {ENT} carries the {ATTR} {VALUE} without further notation.",
+   "The {ENT} lists {VALUE} under the {ATTR} for audit use.",
+   "The {ENT} reports the {ATTR} as {VALUE} this cycle.",
+   "The {ENT} retains {VALUE} as the {ATTR} after inspection.",
+   "The {ENT} is tied to {VALUE} for the {ATTR} today.",
+   "The {ENT} gives {VALUE} when the {ATTR} is requested.",
+   "The {ENT} holds {VALUE} beneath the {ATTR} heading.",
+   "The {ENT} uses {VALUE} for the {ATTR} in plain text.",
+   "The {ATTR} is stored as {VALUE} beside the {ENT}.",
+   "A {ATTR} reading of {VALUE} was attached to the {ENT}.",
+   "The latest {ATTR} entry reads {VALUE} for the {ENT}.",
+   "According to the ledger, the {ATTR} equals {VALUE} for the {ENT}.",
+   "The {ATTR} changed to {VALUE} within the file for the {ENT}.",
+   "One {ATTR} remains {VALUE} across the record of the {ENT}.",
+   "The verified {ATTR} stands at {VALUE} alongside the {ENT}.",
+   "No {ATTR} other than {VALUE} is linked with the {ENT}.",
+   "The {ATTR} was copied as {VALUE} into the folder for the {ENT}.",
+   "The current {ATTR} appears as {VALUE} at the end for the {ENT}.",
+   "Per the asset database, {VALUE} is the official {ATTR} of the {ENT}.",
+   "The {ATTR} recorded in the handover sheet for the {ENT} reads {VALUE}.",
+   "As noted in the audit file, the {ENT} carries the {ATTR} {VALUE}.",
+   "On the handover sheet, the {ENT} is documented with a {ATTR} equal to {VALUE}.",
+   "The audit file confirms that the {ATTR} of the {ENT} stands at {VALUE}.",
+   "Stamped on the label plate, the {ATTR} of the {ENT} appears as {VALUE}.",
+   "For the {ENT}, the asset database stores {VALUE} under the {ATTR}.",
+   "The handover sheet for the {ENT} specifies {VALUE} in the {ATTR} field.",
+   "The label plate indicates that the {ENT} has the {ATTR} {VALUE}.",
+   "The audit file entry shows {VALUE} listed beside the {ATTR} of the {ENT}.",
+   "Engraved on the label plate of the {ENT}, the {ATTR} is given as {VALUE}.",
+   "For the {ENT}, the {ATTR} reads {VALUE}, which matches the prior inventory report.",
+   "After the overhaul, the {ATTR} of the {ENT} became {VALUE}, which the crew documented.",
+   "During the audit, the {ATTR} of the {ENT} was found to be {VALUE}, which matched the invoice.",
+   "The {ENT} is registered with a {ATTR} of {VALUE}, which applies until the next review.",
+   "As of this quarter, the {ATTR} for the {ENT} stands at {VALUE}, which finance approved.",
+   "The {ENT} reports {VALUE} for {ATTR}, which the monitoring system captured automatically.",
+   "Because the ledger was reconciled, the record for the {ENT} lists the {ATTR} as {VALUE}.",
+   "Although the inspection was brief, the file on the {ENT} gives the {ATTR} as {VALUE}.",
+   "When maintenance closed the ticket, the entry for the {ENT} stores the {ATTR} as {VALUE}.",
+   "Since the audit began, the register for the {ENT} shows the {ATTR} as {VALUE}.",
+   "If the inventory is trusted, the log for the {ENT} reports the {ATTR} as {VALUE}.",
+   "After calibration ended, the record beside the {ENT} records the {ATTR} as {VALUE}.",
+   "Before the shipment left, the sheet for the {ENT} noted the {ATTR} as {VALUE}.",
+   "Even though access was limited, the archive for the {ENT} keeps the {ATTR} as {VALUE}.",
+   "As soon as the meter was checked, the database row for the {ENT} sets the {ATTR} to {VALUE}.",
+   "While the plant ran overnight, the history for the {ENT} retained the {ATTR} as {VALUE}.",
+   "Once the work order closed, the profile for the {ENT} updated the {ATTR} to {VALUE}.",
+   "Unless the archive is corrected, the summary for the {ENT} preserves the {ATTR} as {VALUE}.",
+   "Wherever the tag was scanned, the system record for the {ENT} returned the {ATTR} as {VALUE}.",
+   "Because replacements were delayed, the current entry for the {ENT} still marks the {ATTR} as {VALUE}.",
+   "Though naming conventions changed, the master record for the {ENT} now states the {ATTR} as {VALUE}.",
+   "As the database migrated, the exported row for the {ENT} carried the {ATTR} as {VALUE}.",
+   "If auditors ask later, the certified file for the {ENT} will show the {ATTR} as {VALUE}.",
+   "When the label faded, the backup register for the {ENT} preserved the {ATTR} as {VALUE}.",
+   "After ownership transfer was approved, the asset record for the {ENT} changed the {ATTR} to {VALUE}.",
+   "Provided the form is complete, the intake log for the {ENT} enters the {ATTR} as {VALUE}."
+  ],
+  "rejected": [
+   {
+    "t": "The maintenance log lists the {ATTR} of the {ENT} as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "For the {ENT}, the inspection sheet records the {ATTR} as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The asset register gives the {ENT} a {ATTR} of {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Per standard practice, the {ENT} has its {ATTR} documented as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The {ATTR} of the {ENT} was recorded as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "{VALUE} was entered as the {ATTR} for the {ENT}.",
+    "why": "starts with the value (sentence-initial values are never written by design)"
+   },
+   {
+    "t": "During the audit, the {ATTR} of the {ENT} was confirmed to be {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "{VALUE} has been logged as the {ATTR} belonging to the {ENT}.",
+    "why": "starts with the value (sentence-initial values are never written by design)"
+   },
+   {
+    "t": "As required by policy, the {ATTR} was documented for the {ENT} as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "{VALUE} was officially assigned to the {ENT} as its {ATTR}.",
+    "why": "starts with the value (sentence-initial values are never written by design)"
+   },
+   {
+    "t": "{VALUE} was submitted and accepted as the {ATTR} of the {ENT}.",
+    "why": "starts with the value (sentence-initial values are never written by design)"
+   },
+   {
+    "t": "Following verification, the {ATTR} of the {ENT} was registered as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "{VALUE} was noted as the {ATTR} when the {ENT} was catalogued.",
+    "why": "starts with the value (sentence-initial values are never written by design)"
+   },
+   {
+    "t": "Before deployment, {VALUE} was designated as the {ATTR} of the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "{VALUE} was listed under {ATTR} when the {ENT} was added to inventory.",
+    "why": "starts with the value (sentence-initial values are never written by design)"
+   },
+   {
+    "t": "{VALUE} was captured as the {ATTR} during the commissioning of the {ENT}.",
+    "why": "starts with the value (sentence-initial values are never written by design)"
+   },
+   {
+    "t": "{VALUE} is now on file as the {ATTR} associated with the {ENT}.",
+    "why": "starts with the value (sentence-initial values are never written by design)"
+   },
+   {
+    "t": "According to the maintenance log, the {ATTR} of the {ENT} is recorded as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "In the latest inspection report, the {ENT} shows a {ATTR} of {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "In the asset registry, the {ENT} is listed with a {ATTR} of {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Following the safety inspection, technicians confirmed the {ATTR} of the {ENT} to be {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "According to the equipment database, the {ENT} carries a {ATTR} recorded as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "According to the warranty documentation, the {ATTR} associated with the {ENT} is {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "According to the shift supervisor's notes, the {ENT} had its {ATTR} logged as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "Following the relocation of the {ENT}, its {ATTR} was reconfirmed as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The {ATTR} of the {ENT} is recorded as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "According to my inspection, the {ENT} has a {ATTR} of {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Our records show {VALUE} as the {ATTR} for the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "During yesterday's walkthrough I noted the {ATTR} of the {ENT} as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The {ENT} was tagged with a {ATTR} reading of {VALUE} during my visit.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "On the maintenance log, the {ATTR} for the {ENT} appears as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "We measured the {ENT} and logged its {ATTR} as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The latest report lists {VALUE} under the {ATTR} of the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "After servicing, I updated the {ATTR} of the {ENT} to {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The file on the {ENT} gives its {ATTR} as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "Field crews reported the {ATTR} of the {ENT} to be {VALUE} this morning.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The {ENT} passed review, and its {ATTR} was entered as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "Someone from the night shift wrote down {VALUE} as the {ATTR} for the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "According to the asset database, the {ATTR} of the {ENT} is recorded as {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The handover sheet lists {VALUE} as the {ATTR} for the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "In the audit file, the {ENT} shows a {ATTR} of {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The label plate on the {ENT} gives its {ATTR} as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The asset database assigns {VALUE} to the {ATTR} of the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Within the audit file, the {ENT} is associated with a {ATTR} of {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The asset database entry for the {ENT} reports its {ATTR} as {VALUE}.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "From the handover sheet we learn that the {ATTR} of the {ENT} is {VALUE}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The {ENT} has its {ATTR} set to {VALUE} in the asset database.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The {ATTR} of the {ENT} is {VALUE}, which was confirmed during the latest inspection.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Our records list {VALUE} as the {ATTR} for the {ENT}, as of the last audit.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The {ENT} has a {ATTR} of {VALUE}, according to the maintenance log on file.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The {ATTR} assigned to the {ENT} is {VALUE}, and this was verified by the supervisor.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "When the {ENT} was last serviced, its {ATTR} was {VALUE}, which the technician recorded.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The {ENT} carries {VALUE} as its {ATTR}, as noted in the asset register.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "According to the ledger, the {ATTR} of the {ENT} is {VALUE}, which has not changed since installation.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The {ENT} shows {VALUE} for its {ATTR}, based on the most recent meter reading.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The {ATTR} recorded for the {ENT} remains {VALUE}, as it has since the commissioning date.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "On the nameplate, the {ENT} displays {VALUE} as its {ATTR}, which inspectors verified.",
+    "why": "pronoun (would need cross-sentence reference)"
+   },
+   {
+    "t": "The database entry gives {VALUE} as the {ATTR} of the {ENT}, as updated by the clerk.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The {ATTR} of the {ENT} was set to {VALUE}, as specified in the purchase agreement.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Per the warranty file, the {ENT} holds a {ATTR} of {VALUE}, which the vendor supplied.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "The latest survey lists the {ATTR} of the {ENT} as {VALUE}, which the auditor certified.",
+    "why": "too close to an excluded (held-out / training) template"
+   }
+  ],
+  "raw": [
+   {
+    "style": "formal maintenance-log register; vary the verb (lists, records, shows, gives, notes, specifies)",
+    "n_parsed": 20,
+    "response": "[\"The maintenance log lists the {ATTR} of the {ENT} as {VALUE}.\", \"For the {ENT}, the inspection sheet records the {ATTR} as {VALUE}.\", \"The service file shows that the {ENT} has {VALUE} entered under the {ATTR}.\", \"Under the {ATTR}, the technician notes {VALUE} for the {ENT}.\", \"The asset register gives the {ENT} a {ATTR} of {VALUE}.\", \"Per the latest entry, {VALUE} is specified as the {ATTR} of the {ENT}.\", \"The {ENT} is logged with {VALUE} recorded in the field for the {ATTR}.\", \"In the maintenance ledger, the {ATTR} belonging to the {ENT} reads {VALUE}.\", \"The checklist confirms that the {ATTR} on the {ENT} matches {VALUE}.\", \"For audit purposes, the {ENT} carries {VALUE} beside the labeled {ATTR}.\", \"The work order specifies {VALUE} as the current {ATTR} assigned to the {ENT}.\", \"On the equipment card, the {ENT} lists {VALUE} beneath the heading for the {ATTR}.\", \"The database entry for the {ENT} gives {VALUE} where the {ATTR} is required.\", \"As noted by the inspector, the {ATTR} of the {ENT} remains {VALUE}.\", \"The service summary records {VALUE} against the {ATTR} field for the {ENT}.\", \"Within the plant registry, the {ENT} shows the {ATTR} set to {VALUE}.\", \"The compliance form notes that {VALUE} applies to the {ATTR} of the {ENT}.\", \"Beside the {ATTR} label, the {ENT} is marked with {VALUE} in the logbook.\", \"The shift report enters {VALUE} under the {ATTR} column reserved for the {ENT}.\", \"Per standard practice, the {ENT} has its {ATTR} documented as {VALUE}.\"]"
+   },
+   {
+    "style": "passive voice, e.g. something was assigned / was recorded / was entered; put {VALUE} before {ENT} in about half",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"The {ATTR} of the {ENT} was recorded as {VALUE}.\",\n  \"{VALUE} was entered as the {ATTR} for the {ENT}.\",\n  \"During the audit, the {ATTR} of the {ENT} was confirmed to be {VALUE}.\",\n  \"{VALUE} has been logged as the {ATTR} belonging to the {ENT}.\",\n  \"As required by policy, the {ATTR} was documented for the {ENT} as {VALUE}.\",\n  \"{VALUE} was officially assigned to the {ENT} as its {ATTR}.\",\n  \"The {ATTR} was updated to {VALUE} after the {ENT} was inspected.\",\n  \"In the maintenance system, {VALUE} was stored as the {ATTR} of the {ENT}.\",\n  \"The {ATTR} for the {ENT} was reported by the technician as {VALUE}.\",\n  \"{VALUE} was submitted and accepted as the {ATTR} of the {ENT}.\",\n  \"Following verification, the {ATTR} of the {ENT} was registered as {VALUE}.\",\n  \"{VALUE} was noted as the {ATTR} when the {ENT} was catalogued.\",\n  \"The {ATTR} was certified as {VALUE} for the {ENT} by the inspector.\",\n  \"Before deployment, {VALUE} was designated as the {ATTR} of the {ENT}.\",\n  \"The {ATTR} of the {ENT} has been set to {VALUE} in the registry.\",\n  \"{VALUE} was listed under {ATTR} when the {ENT} was added to inventory.\",\n  \"After review, the {ATTR} of the {ENT} was amended to read {VALUE}.\",\n  \"{VALUE} was captured as the {ATTR} during the commissioning of the {ENT}.\",\n  \"The {ATTR} was transcribed as {VALUE} onto the record for the {ENT}.\",\n  \"{VALUE} is now on file as the {ATTR} associated with the {ENT}.\"\n]\n```"
+   },
+   {
+    "style": "start with a prepositional or adverbial opener (According to ..., In the ..., Following ..., As of ...)",
+    "n_parsed": 20,
+    "response": "[\"According to the maintenance log, the {ATTR} of the {ENT} is recorded as {VALUE}.\",\n\"In the latest inspection report, the {ENT} shows a {ATTR} of {VALUE}.\",\n\"Following the quarterly audit, the {ATTR} for the {ENT} was updated to {VALUE}.\",\n\"As of the most recent review, the {ENT} has a {ATTR} equal to {VALUE}.\",\n\"According to procurement records, {VALUE} was entered as the {ATTR} of the {ENT}.\",\n\"In the asset registry, the {ENT} is listed with a {ATTR} of {VALUE}.\",\n\"Following the safety inspection, technicians confirmed the {ATTR} of the {ENT} to be {VALUE}.\",\n\"As of the last calibration cycle, the {ATTR} assigned to the {ENT} reads {VALUE}.\",\n\"According to the equipment database, the {ENT} carries a {ATTR} recorded as {VALUE}.\",\n\"In the service history file, {VALUE} appears as the {ATTR} belonging to the {ENT}.\",\n\"Following verification by the site engineer, the {ATTR} of the {ENT} now stands at {VALUE}.\",\n\"As of the annual inventory check, the {ENT} was documented with a {ATTR} of {VALUE}.\",\n\"According to the warranty documentation, the {ATTR} associated with the {ENT} is {VALUE}.\",\n\"In the operations handbook, the {ENT} is described as having a {ATTR} set to {VALUE}.\",\n\"Following the installation review, the {ATTR} reported for the {ENT} became {VALUE}.\",\n\"As of the compliance assessment, {VALUE} serves as the official {ATTR} of the {ENT}.\",\n\"According to the shift supervisor's notes, the {ENT} had its {ATTR} logged as {VALUE}.\",\n\"In the spare parts catalog, the {ATTR} tied to the {ENT} is given as {VALUE}.\",\n\"Following the relocation of the {ENT}, its {ATTR} was reconfirmed as {VALUE}.\",\n\"As of yesterday's diagnostic run, the {ATTR} measured on the {ENT} returned {VALUE}.\"]"
+   },
+   {
+    "style": "short plain statements by a technician or inspector; vary who reports it",
+    "n_parsed": 20,
+    "response": "[\"The {ATTR} of the {ENT} is recorded as {VALUE}.\",\n\"I checked the {ENT} today and found the {ATTR} to be {VALUE}.\",\n\"According to my inspection, the {ENT} has a {ATTR} of {VALUE}.\",\n\"Our records show {VALUE} as the {ATTR} for the {ENT}.\",\n\"During yesterday's walkthrough I noted the {ATTR} of the {ENT} as {VALUE}.\",\n\"The {ENT} was tagged with a {ATTR} reading of {VALUE} during my visit.\",\n\"As inspector, I can confirm the {ENT} carries the {ATTR} {VALUE}.\",\n\"On the maintenance log, the {ATTR} for the {ENT} appears as {VALUE}.\",\n\"We measured the {ENT} and logged its {ATTR} as {VALUE}.\",\n\"The latest report lists {VALUE} under the {ATTR} of the {ENT}.\",\n\"My supervisor asked me to verify the {ATTR} of the {ENT}, which came out to {VALUE}.\",\n\"For audit purposes, the {ENT} shows a {ATTR} equal to {VALUE}.\",\n\"Technician note: the {ATTR} on the {ENT} reads {VALUE}.\",\n\"After servicing, I updated the {ATTR} of the {ENT} to {VALUE}.\",\n\"The file on the {ENT} gives its {ATTR} as {VALUE}.\",\n\"Field crews reported the {ATTR} of the {ENT} to be {VALUE} this morning.\",\n\"Per the inspection sheet, {VALUE} is the current {ATTR} of the {ENT}.\",\n\"I can vouch that the {ENT} is registered with the {ATTR} {VALUE}.\",\n\"The {ENT} passed review, and its {ATTR} was entered as {VALUE}.\",\n\"Someone from the night shift wrote down {VALUE} as the {ATTR} for the {ENT}.\"]"
+   },
+   {
+    "style": "put {ENT} at the very start or the very end of the sentence; mix both",
+    "n_parsed": 20,
+    "response": "[\"The {ENT} has the {ATTR} recorded as {VALUE}.\",\"The {ENT} shows the {ATTR} as {VALUE} in the current register.\",\"The {ENT} carries the {ATTR} {VALUE} without further notation.\",\"The {ENT} lists {VALUE} under the {ATTR} for audit use.\",\"The {ENT} reports the {ATTR} as {VALUE} this cycle.\",\"The {ENT} retains {VALUE} as the {ATTR} after inspection.\",\"The {ENT} is tied to {VALUE} for the {ATTR} today.\",\"The {ENT} gives {VALUE} when the {ATTR} is requested.\",\"The {ENT} holds {VALUE} beneath the {ATTR} heading.\",\"The {ENT} uses {VALUE} for the {ATTR} in plain text.\",\"The {ATTR} is stored as {VALUE} beside the {ENT}.\",\"A {ATTR} reading of {VALUE} was attached to the {ENT}.\",\"The latest {ATTR} entry reads {VALUE} for the {ENT}.\",\"According to the ledger, the {ATTR} equals {VALUE} for the {ENT}.\",\"The {ATTR} changed to {VALUE} within the file for the {ENT}.\",\"One {ATTR} remains {VALUE} across the record of the {ENT}.\",\"The verified {ATTR} stands at {VALUE} alongside the {ENT}.\",\"No {ATTR} other than {VALUE} is linked with the {ENT}.\",\"The {ATTR} was copied as {VALUE} into the folder for the {ENT}.\",\"The current {ATTR} appears as {VALUE} at the end for the {ENT}.\"]"
+   },
+   {
+    "style": "documents and systems as the source (the asset database, the handover sheet, the audit file, the label plate)",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"According to the asset database, the {ATTR} of the {ENT} is recorded as {VALUE}.\",\n  \"The handover sheet lists {VALUE} as the {ATTR} for the {ENT}.\",\n  \"In the audit file, the {ENT} shows a {ATTR} of {VALUE}.\",\n  \"The label plate on the {ENT} gives its {ATTR} as {VALUE}.\",\n  \"Per the asset database, {VALUE} is the official {ATTR} of the {ENT}.\",\n  \"The {ATTR} recorded in the handover sheet for the {ENT} reads {VALUE}.\",\n  \"As noted in the audit file, the {ENT} carries the {ATTR} {VALUE}.\",\n  \"The asset database assigns {VALUE} to the {ATTR} of the {ENT}.\",\n  \"On the handover sheet, the {ENT} is documented with a {ATTR} equal to {VALUE}.\",\n  \"The audit file confirms that the {ATTR} of the {ENT} stands at {VALUE}.\",\n  \"Stamped on the label plate, the {ATTR} of the {ENT} appears as {VALUE}.\",\n  \"For the {ENT}, the asset database stores {VALUE} under the {ATTR}.\",\n  \"The handover sheet for the {ENT} specifies {VALUE} in the {ATTR} field.\",\n  \"Within the audit file, the {ENT} is associated with a {ATTR} of {VALUE}.\",\n  \"The label plate indicates that the {ENT} has the {ATTR} {VALUE}.\",\n  \"The asset database entry for the {ENT} reports its {ATTR} as {VALUE}.\",\n  \"From the handover sheet we learn that the {ATTR} of the {ENT} is {VALUE}.\",\n  \"The audit file entry shows {VALUE} listed beside the {ATTR} of the {ENT}.\",\n  \"Engraved on the label plate of the {ENT}, the {ATTR} is given as {VALUE}.\",\n  \"The {ENT} has its {ATTR} set to {VALUE} in the asset database.\"\n]\n```"
+   },
+   {
+    "style": "{VALUE} in the middle of the sentence, followed by a clause (e.g. '..., which ...', '... as of the last audit')",
+    "n_parsed": 20,
+    "response": "```json\n[\n  \"The {ATTR} of the {ENT} is {VALUE}, which was confirmed during the latest inspection.\",\n  \"Our records list {VALUE} as the {ATTR} for the {ENT}, as of the last audit.\",\n  \"The {ENT} has a {ATTR} of {VALUE}, according to the maintenance log on file.\",\n  \"For the {ENT}, the {ATTR} reads {VALUE}, which matches the prior inventory report.\",\n  \"The {ATTR} assigned to the {ENT} is {VALUE}, and this was verified by the supervisor.\",\n  \"When the {ENT} was last serviced, its {ATTR} was {VALUE}, which the technician recorded.\",\n  \"The {ENT} carries {VALUE} as its {ATTR}, as noted in the asset register.\",\n  \"According to the ledger, the {ATTR} of the {ENT} is {VALUE}, which has not changed since installation.\",\n  \"The {ENT} shows {VALUE} for its {ATTR}, based on the most recent meter reading.\",\n  \"After the overhaul, the {ATTR} of the {ENT} became {VALUE}, which the crew documented.\",\n  \"The {ATTR} recorded for the {ENT} remains {VALUE}, as it has since the commissioning date.\",\n  \"On the nameplate, the {ENT} displays {VALUE} as its {ATTR}, which inspectors verified.\",\n  \"The database entry gives {VALUE} as the {ATTR} of the {ENT}, as updated by the clerk.\",\n  \"During the audit, the {ATTR} of the {ENT} was found to be {VALUE}, which matched the invoice.\",\n  \"The {ENT} is registered with a {ATTR} of {VALUE}, which applies until the next review.\",\n  \"As of this quarter, the {ATTR} for the {ENT} stands at {VALUE}, which finance approved.\",\n  \"The {ENT} reports {VALUE} for {ATTR}, which the monitoring system captured automatically.\",\n  \"The {ATTR} of the {ENT} was set to {VALUE}, as specified in the purchase agreement.\",\n  \"Per the warranty file, the {ENT} holds a {ATTR} of {VALUE}, which the vendor supplied.\",\n  \"The latest survey lists the {ATTR} of the {ENT} as {VALUE}, which the auditor certified.\"\n]\n```"
+   },
+   {
+    "style": "varied clause order: subordinate clause first, main clause second",
+    "n_parsed": 20,
+    "response": "[\"Because the ledger was reconciled, the record for the {ENT} lists the {ATTR} as {VALUE}.\", \"Although the inspection was brief, the file on the {ENT} gives the {ATTR} as {VALUE}.\", \"When maintenance closed the ticket, the entry for the {ENT} stores the {ATTR} as {VALUE}.\", \"Since the audit began, the register for the {ENT} shows the {ATTR} as {VALUE}.\", \"If the inventory is trusted, the log for the {ENT} reports the {ATTR} as {VALUE}.\", \"After calibration ended, the record beside the {ENT} records the {ATTR} as {VALUE}.\", \"Before the shipment left, the sheet for the {ENT} noted the {ATTR} as {VALUE}.\", \"Even though access was limited, the archive for the {ENT} keeps the {ATTR} as {VALUE}.\", \"As soon as the meter was checked, the database row for the {ENT} sets the {ATTR} to {VALUE}.\", \"While the plant ran overnight, the history for the {ENT} retained the {ATTR} as {VALUE}.\", \"Once the work order closed, the profile for the {ENT} updated the {ATTR} to {VALUE}.\", \"Unless the archive is corrected, the summary for the {ENT} preserves the {ATTR} as {VALUE}.\", \"Wherever the tag was scanned, the system record for the {ENT} returned the {ATTR} as {VALUE}.\", \"Because replacements were delayed, the current entry for the {ENT} still marks the {ATTR} as {VALUE}.\", \"Though naming conventions changed, the master record for the {ENT} now states the {ATTR} as {VALUE}.\", \"As the database migrated, the exported row for the {ENT} carried the {ATTR} as {VALUE}.\", \"If auditors ask later, the certified file for the {ENT} will show the {ATTR} as {VALUE}.\", \"When the label faded, the backup register for the {ENT} preserved the {ATTR} as {VALUE}.\", \"After ownership transfer was approved, the asset record for the {ENT} changed the {ATTR} to {VALUE}.\", \"Provided the form is complete, the intake log for the {ENT} enters the {ATTR} as {VALUE}.\"]"
+   }
+  ]
+ },
+ "question": {
+  "accepted": [
+   "What does the {ENT} list as the {ATTR}?",
+   "What was recorded as the {ATTR} on the {ENT}?",
+   "What has been entered under the {ATTR} for the {ENT}?",
+   "What would the {ENT} show for the {ATTR}?",
+   "What appears in the {ATTR} field of the {ENT}?",
+   "What got logged as the {ATTR} when the {ENT} was inspected?",
+   "What information does the {ENT} carry regarding the {ATTR}?",
+   "What is the official {ATTR} given for the {ENT}?",
+   "Would you mind checking the {ATTR} on the {ENT}?",
+   "I would like to know the {ATTR} for the {ENT}.",
+   "Please retrieve the {ATTR} listed under the {ENT}.",
+   "Would you kindly find the {ATTR} recorded against the {ENT}?",
+   "I need confirmation of the {ATTR} for the {ENT}.",
+   "Please identify the {ATTR} connected with the {ENT}.",
+   "Would it be possible to share the {ATTR} for the {ENT}?",
+   "Can you look into the {ATTR} maintained for the {ENT}?",
+   "I would appreciate the {ATTR} used for the {ENT}.",
+   "Could you supply the {ATTR} currently linked to the {ENT}?",
+   "In the file, which {ATTR} is recorded for the {ENT}?",
+   "From the equipment file, identify the {ATTR} for the {ENT}.",
+   "Which entry in the log gives the {ATTR} for the {ENT}?",
+   "What {ATTR} does the file attribute to the {ENT}?",
+   "For the {ENT}, what {ATTR} appears in the service file?",
+   "Give the {ATTR} for the {ENT} exactly as the register records it.",
+   "Under which record does the file connect the {ATTR} with the {ENT}?",
+   "What is logged as the {ATTR} when the register names the {ENT}?",
+   "Read the file and tell me the {ATTR} belonging to the {ENT}.",
+   "In the archived log, find the {ATTR} that describes the {ENT}.",
+   "For the {ENT}, which value is recorded as the {ATTR}?",
+   "For the {ENT}, how should the {ATTR} be specified?",
+   "Regarding the {ENT}, what is listed as the {ATTR}?",
+   "Concerning the {ENT}, what do records show for the {ATTR}?",
+   "With the {ENT}, which field holds the {ATTR}?",
+   "For the {ENT}, what entry corresponds to the {ATTR}?",
+   "For the {ENT}, could the {ATTR} be confirmed?",
+   "For the {ENT}, which record contains the {ATTR}?",
+   "For the {ENT}, what source states the {ATTR}?",
+   "For the {ENT}, in what form is the {ATTR} given?",
+   "For the {ENT}, what should appear as the {ATTR}?"
+  ],
+  "rejected": [
+   {
+    "t": "What is the {ATTR} of the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Which value represents the {ATTR} for the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "What should the {ATTR} of the {ENT} be?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Which entry shows the {ATTR} belonging to the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Which figure corresponds to the {ATTR} of the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "What is currently the {ATTR} assigned to the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Which record holds the {ATTR} for the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "What do the records say about the {ATTR} of the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "What remains the {ATTR} of the {ENT} today?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Which document states the {ATTR} of the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Which database field stores the {ATTR} tied to the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "What might the {ATTR} of the {ENT} turn out to be?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Could you tell me the {ATTR} of the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Please look up the {ATTR} for the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "I need the {ATTR} recorded for the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Can you confirm the {ATTR} associated with the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Please provide the {ATTR} belonging to the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Could you verify whether the {ATTR} of the {ENT} is current?",
+    "why": "does not ask for the value itself (yes/no, where, how)"
+   },
+   {
+    "t": "I am requesting the {ATTR} assigned to the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Please check the {ATTR} that applies to the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Could you let me know the {ATTR} shown for the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Please advise me regarding the {ATTR} of the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "According to the register, what is the {ATTR} of the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Does the log list the {ATTR} for the {ENT}?",
+    "why": "does not ask for the value itself (yes/no, where, how)"
+   },
+   {
+    "t": "What does the maintenance register say about the {ATTR} of the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Please state the {ATTR} of the {ENT} as shown in the log.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Is the {ATTR} of the {ENT} entered in the register?",
+    "why": "does not ask for the value itself (yes/no, where, how)"
+   },
+   {
+    "t": "Using the register, confirm the {ATTR} assigned to the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Check the log and report the {ATTR} of the {ENT}.",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "Where the register concerns the {ENT}, what is the {ATTR}?",
+    "why": "does not ask for the value itself (yes/no, where, how)"
+   },
+   {
+    "t": "Has the log preserved the {ATTR} of the {ENT}?",
+    "why": "does not ask for the value itself (yes/no, where, how)"
+   },
+   {
+    "t": "If the register is correct, what {ATTR} belongs to the {ENT}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "For the {ENT}, what is the {ATTR}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "For the {ENT}, can you provide the {ATTR}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "For the {ENT}, what value is assigned to the {ATTR}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "For the {ENT}, how is the {ATTR} documented?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "For the {ENT}, what must be entered as the {ATTR}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "For the {ENT}, where can the {ATTR} be found?",
+    "why": "does not ask for the value itself (yes/no, where, how)"
+   },
+   {
+    "t": "For the {ENT}, what is noted as the {ATTR}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "For the {ENT}, what is indicated for the {ATTR}?",
+    "why": "too close to an excluded (held-out / training) template"
+   },
+   {
+    "t": "For the {ENT}, what is supplied as the {ATTR}?",
+    "why": "too close to an excluded (held-out / training) template"
+   }
+  ],
+  "raw": [
+   {
+    "style": "direct wh-questions with different openers (What, Which, Who/When only if it fits any attribute)",
+    "n_parsed": 20,
+    "response": "[\n  \"What is the {ATTR} of the {ENT}?\",\n  \"What does the {ENT} list as the {ATTR}?\",\n  \"Which value represents the {ATTR} for the {ENT}?\",\n  \"What was recorded as the {ATTR} on the {ENT}?\",\n  \"What should the {ATTR} of the {ENT} be?\",\n  \"Which entry shows the {ATTR} belonging to the {ENT}?\",\n  \"What has been entered under the {ATTR} for the {ENT}?\",\n  \"What would the {ENT} show for the {ATTR}?\",\n  \"Which figure corresponds to the {ATTR} of the {ENT}?\",\n  \"What appears in the {ATTR} field of the {ENT}?\",\n  \"What is currently the {ATTR} assigned to the {ENT}?\",\n  \"Which record holds the {ATTR} for the {ENT}?\",\n  \"What do the records say about the {ATTR} of the {ENT}?\",\n  \"What remains the {ATTR} of the {ENT} today?\",\n  \"Which document states the {ATTR} of the {ENT}?\",\n  \"What got logged as the {ATTR} when the {ENT} was inspected?\",\n  \"What information does the {ENT} carry regarding the {ATTR}?\",\n  \"Which database field stores the {ATTR} tied to the {ENT}?\",\n  \"What is the official {ATTR} given for the {ENT}?\",\n  \"What might the {ATTR} of the {ENT} turn out to be?\"\n]"
+   },
+   {
+    "style": "polite requests and indirect questions (Could you ..., I need ..., Please look up ...)",
+    "n_parsed": 20,
+    "response": "[\"Could you tell me the {ATTR} of the {ENT}?\", \"Please look up the {ATTR} for the {ENT}.\", \"I need the {ATTR} recorded for the {ENT}.\", \"Would you mind checking the {ATTR} on the {ENT}?\", \"Can you confirm the {ATTR} associated with the {ENT}?\", \"Please provide the {ATTR} belonging to the {ENT}.\", \"I would like to know the {ATTR} for the {ENT}.\", \"Could you verify whether the {ATTR} of the {ENT} is current?\", \"Please retrieve the {ATTR} listed under the {ENT}.\", \"I am requesting the {ATTR} assigned to the {ENT}.\", \"Would you kindly find the {ATTR} recorded against the {ENT}?\", \"Please check the {ATTR} that applies to the {ENT}.\", \"Could you let me know the {ATTR} shown for the {ENT}?\", \"I need confirmation of the {ATTR} for the {ENT}.\", \"Please identify the {ATTR} connected with the {ENT}.\", \"Would it be possible to share the {ATTR} for the {ENT}?\", \"Can you look into the {ATTR} maintained for the {ENT}?\", \"Please advise me regarding the {ATTR} of the {ENT}.\", \"I would appreciate the {ATTR} used for the {ENT}.\", \"Could you supply the {ATTR} currently linked to the {ENT}?\"]"
+   },
+   {
+    "style": "questions mentioning a record or document as the source (the register, the log, the file)",
+    "n_parsed": 20,
+    "response": "[\"According to the register, what is the {ATTR} of the {ENT}?\", \"Does the log list the {ATTR} for the {ENT}?\", \"In the file, which {ATTR} is recorded for the {ENT}?\", \"What does the maintenance register say about the {ATTR} of the {ENT}?\", \"Please state the {ATTR} of the {ENT} as shown in the log.\", \"From the equipment file, identify the {ATTR} for the {ENT}.\", \"Is the {ATTR} of the {ENT} entered in the register?\", \"Which entry in the log gives the {ATTR} for the {ENT}?\", \"Using the register, confirm the {ATTR} assigned to the {ENT}.\", \"What {ATTR} does the file attribute to the {ENT}?\", \"Check the log and report the {ATTR} of the {ENT}.\", \"Where the register concerns the {ENT}, what is the {ATTR}?\", \"For the {ENT}, what {ATTR} appears in the service file?\", \"Give the {ATTR} for the {ENT} exactly as the register records it.\", \"Has the log preserved the {ATTR} of the {ENT}?\", \"Under which record does the file connect the {ATTR} with the {ENT}?\", \"What is logged as the {ATTR} when the register names the {ENT}?\", \"Read the file and tell me the {ATTR} belonging to the {ENT}.\", \"If the register is correct, what {ATTR} belongs to the {ENT}?\", \"In the archived log, find the {ATTR} that describes the {ENT}.\"]"
+   },
+   {
+    "style": "questions that put {ENT} first, e.g. 'For the {ENT}, ...'",
+    "n_parsed": 20,
+    "response": "[\"For the {ENT}, what is the {ATTR}?\", \"For the {ENT}, which value is recorded as the {ATTR}?\", \"For the {ENT}, how should the {ATTR} be specified?\", \"Regarding the {ENT}, what is listed as the {ATTR}?\", \"Concerning the {ENT}, what do records show for the {ATTR}?\", \"With the {ENT}, which field holds the {ATTR}?\", \"For the {ENT}, what entry corresponds to the {ATTR}?\", \"For the {ENT}, can you provide the {ATTR}?\", \"For the {ENT}, could the {ATTR} be confirmed?\", \"For the {ENT}, what value is assigned to the {ATTR}?\", \"For the {ENT}, which record contains the {ATTR}?\", \"For the {ENT}, what source states the {ATTR}?\", \"For the {ENT}, how is the {ATTR} documented?\", \"For the {ENT}, in what form is the {ATTR} given?\", \"For the {ENT}, what should appear as the {ATTR}?\", \"For the {ENT}, what must be entered as the {ATTR}?\", \"For the {ENT}, where can the {ATTR} be found?\", \"For the {ENT}, what is noted as the {ATTR}?\", \"For the {ENT}, what is indicated for the {ATTR}?\", \"For the {ENT}, what is supplied as the {ATTR}?\"]"
+   }
+  ]
+ }
+}

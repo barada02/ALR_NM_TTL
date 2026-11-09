@@ -50,6 +50,8 @@ class LLMConfig:
     abort_step: int = 0              # >0: at this step, stop if the Gemini long-context document-specific gain < abort_min_gain
     abort_min_gain: float = 1.0
     ablate_key_part: str = "none"    # EVAL-ONLY: none | local | context (zero that part of both composite keys)
+    context_only_key: bool = False   # E17 arm A4: both composite keys = RMS(W_c · c) (local part dropped in TRAINING and eval);
+                                     # W_c is warm-started as a copy of model v1's W_k (a zero W_c would give an all-zero key)
     force_gate: str = "none"         # EVAL-ONLY (E16): none | pos | sent | all — override the learned write gate
     force_gate_value: float = 1.0
     ckpt_steps: str = ""             # extra memory checkpoints, e.g. "2000" (extension rule needs the 2000-step probe)

@@ -37,20 +37,21 @@ def annotation_tokens(tok, ex, ctx_ids, prompt_ids):
     never needed at inference by the pooled arms."""
     import re as _re
     q = ex["question"]
-    devs = [d_ for d_ in DEVICES if d_ in q]
-    if not devs or not ex["meta"].get("annot"):
+    if not ex["meta"].get("annot"):
         return None
-    dev = devs[0]
+    devs = [d_ for d_ in DEVICES if d_ in q]
     enc = tok(ex["context"], add_special_tokens=False, return_offsets_mapping=True)
     if enc["input_ids"][:len(ctx_ids)] != ctx_ids:
         return None
     off, L = enc["offset_mapping"], len(ctx_ids)
-    pat = _re.escape(dev) + r" at ([A-Z][a-z]+ [0-9A-Z]+)"
-    ent_ctx = sorted({t for m in _re.finditer(pat, ex["context"]) for t in _span_tokens(off, m.start(), m.end(), L)})
-    p_text = PROMPT.format(q=q)
-    penc = tok(p_text, add_special_tokens=False, return_offsets_mapping=True)
-    mq = _re.search(pat, p_text)
-    ent_q = _span_tokens(penc["offset_mapping"], mq.start(), mq.end(), len(prompt_ids)) if mq else []
+    ent_ctx, ent_q = [], []
+    if devs:     # gold entity spans: only the oracle arm D uses them, and only for the "device at Loc" form; the key loss needs val_first only
+        pat = _re.escape(devs[0]) + r" at ([A-Z][a-z]+ [0-9A-Z]+)"
+        ent_ctx = sorted({t for m in _re.finditer(pat, ex["context"]) for t in _span_tokens(off, m.start(), m.end(), L)})
+        p_text = PROMPT.format(q=q)
+        penc = tok(p_text, add_special_tokens=False, return_offsets_mapping=True)
+        mq = _re.search(pat, p_text)
+        ent_q = _span_tokens(penc["offset_mapping"], mq.start(), mq.end(), len(prompt_ids)) if mq else []
     a = ex["meta"]["annot"]
     val_first = []
     for v in [ex["answer"]] + list(a.get("distractor_values", [])):

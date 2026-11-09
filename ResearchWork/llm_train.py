@@ -220,6 +220,11 @@ def run_llm(cfg: LLMConfig, sha: str = "", verbose: bool = True) -> dict:
         assert not unexpected, f"unexpected keys in warm-start checkpoint: {unexpected}"
         assert all(k.startswith(("W_c", "pool_")) for k in missing), f"warm start is missing non-new keys: {missing}"
         warm = {"from": cfg.init_ckpt, "new_params": list(missing)}
+        if cfg.context_only_key:                           # E17 A4: the key is RMS(W_c·c) alone, so W_c must not start at zero
+            assert cfg.key_mode == "composite" and "W_c.weight" in missing
+            with torch.no_grad():
+                model.memory.W_c.weight.copy_(model.memory.kv.W_k.weight)
+            warm["W_c_init"] = "copy of W_k (context-only key)"
         if verbose:
             print("[warm start]", warm)
     model.train()
