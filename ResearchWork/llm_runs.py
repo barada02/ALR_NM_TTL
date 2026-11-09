@@ -162,6 +162,11 @@ def v6_screen() -> List[LLMConfig]:
     return [_v6_base(run_name="v6_A3d_s0"), _v6_base(run_name="v6_A4d_s0", context_only_key=True)]
 
 
+def v6_confirm() -> List[LLMConfig]:
+    """E17 confirmation of the selected arm A3d (A4d tripped the abort rule): 6000 steps, seeds 0 / 1 / 2, identical configs."""
+    return [_v6_base(run_name=f"v6c_A3d_s{s}", seed=s, steps=6000, eval_every=2000, ckpt_steps="3000") for s in (0, 1, 2)]
+
+
 def v6_smoke() -> List[LLMConfig]:
     tiny = dict(steps=12, log_every=2, eval_every=10 ** 9, val_per_type=6, gen_eval_per_type=3, batch_size=2, gen_max_new=8,
                 save_ckpt=False, abort_step=6, abort_min_gain=-100.0, ckpt_steps="")
@@ -190,7 +195,7 @@ def fix_b() -> List[LLMConfig]:
 
 RUNS = {"smoke": smoke, "gate2a": gate2a, "full_a": full_a, "fix_smoke": fix_smoke, "fix_a": fix_a, "fix_b": fix_b,
         "fix_c": fix_c, "final_b": final_b, "paired_ctl": paired_ctl, "fix_d": fix_d, "stage2": stage2,
-        "v5_screen": v5_screen, "v5_smoke": v5_smoke, "v5_confirm": v5_confirm, "v6_screen": v6_screen, "v6_smoke": v6_smoke}
+        "v5_screen": v5_screen, "v5_smoke": v5_smoke, "v5_confirm": v5_confirm, "v6_screen": v6_screen, "v6_smoke": v6_smoke, "v6_confirm": v6_confirm}
 
 
 def build_runs(name: str) -> List[LLMConfig]:
