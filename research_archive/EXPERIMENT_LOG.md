@@ -270,6 +270,8 @@ capacity (512-fact stream 0.69 vs 0.08-0.19) and on similar keys (colliding K16R
 Caveat: one head, one state size, trained at short lengths.
 **Learning-rate check (`gdn_lr`, requested by review; decay was already checked):** stream task acc at 512 facts — read-after 0.08 (lr 1e-3) / 0.08 (3e-3, default) / 0.13 (1e-2); read-first 0.14 / 0.19 / **0.24**.
 Accuracy rises with lr, so 3e-2 was not tried, but the best DeltaNet (0.24) is still far below Mode B at the same state (0.69): the capacity gap survives both the decay and the learning-rate check.
+**Closed (`gdn_lr_hi`):** the curve peaks at lr 1e-2 and turns over — read-after 0.08 / 0.08 / 0.13 / 0.07 / 0.04 and read-first 0.14 / 0.19 / 0.24 / 0.20 / 0.03 at lr 1e-3 / 3e-3 / 1e-2 / 3e-2 / 1e-1 (512 facts).
+The DeltaNet's tuned best is 0.24 vs Mode B's 0.69 at the same state: not a tuning artifact.
 
 ### E11 — Stage 0: zero-shot evaluation of model v1 on programmatic sets (done)
 Sets (`data_generation/programmatic_eval.py`, seed 2024, 1,700 records, every invariant verified; template prose = a style nobody trained on): single (300), overwrite (300), colliding (300; 2/4/8 same-type facts), colliding_overwrite (200), haystack (400; target wrapped in 2/4/8/16
