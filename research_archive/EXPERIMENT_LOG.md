@@ -264,6 +264,8 @@ gated DeltaNet (read-after)           0.97         0.11   |      0.80        0.6
 At matched state and parameters the two are strong in different places: the DeltaNet is far better at plain overwrite (token-level updates, stale rate 0.01 — it beats even Mode B at chunk 4, 0.93, and confirms E8: chunking causes the stale values), while Mode B is far better on
 capacity (512-fact stream 0.69 vs 0.08-0.19) and on similar keys (colliding K16R1 1.00 vs 0.80). So the claim "nonlinear deep memory buys something over a linear delta-rule state" is supported under interference and at capacity, at the same state size and fewer parameters.
 Caveat: one head, one state size, trained at short lengths.
+**Learning-rate check (`gdn_lr`, requested by review; decay was already checked):** stream task acc at 512 facts — read-after 0.08 (lr 1e-3) / 0.08 (3e-3, default) / 0.13 (1e-2); read-first 0.14 / 0.19 / **0.24**.
+Accuracy rises with lr, so 3e-2 was not tried, but the best DeltaNet (0.24) is still far below Mode B at the same state (0.69): the capacity gap survives both the decay and the learning-rate check.
 
 ### E11 — Stage 0: zero-shot evaluation of model v1 on programmatic sets (done)
 Sets (`data_generation/programmatic_eval.py`, seed 2024, 1,700 records, every invariant verified; template prose = a style nobody trained on): single (300), overwrite (300), colliding (300; 2/4/8 same-type facts), colliding_overwrite (200), haystack (400; target wrapped in 2/4/8/16
