@@ -20,6 +20,9 @@ Each entry = question → setup → result → decision. Keep entries to ~6 line
 - **Stage 2 outcome (E12, pre-registered test): criteria 1 and 2 FAIL.** Training on 25% colliding + 15% overwrite programmatic data did not teach entity-value binding (colliding ranking seen 0.31 / held-out 0.34; chance 0.33)
   and mixing it in broke document recall in 2 of 3 seeds (Gemini long-context NLL 2.64 / 2.72 / 1.53 vs 1.10; wrong-doc = right-doc in the two collapsed seeds). By the pre-registered rule H_data is not supported, but the result is
   CONFOUNDED by that collapse — next: remove the confound (fine-tune from model v1) before concluding "architecture limit".
+- **Where binding fails (E13, pre-registered probes): ADDRESSING, not storage.** Queried with a fact's own write key, the memory returns that fact's value well above chance (storage 0.50-0.63 vs chance 0.29, every healthy
+  model incl. model v1); but the key built at the question position matches the asked fact's write key no better than a colliding fact's (0.28-0.31), and neither does the raw hidden state there (0.26-0.28). Overwrite works
+  because it needs no entity addressing (one entity; the later write wins: recency, not a lexical cue — this corrects E12). Next: key construction (entity-aware keys), guided by a supervised linear-probe test.
 - **Goal (decided):** a workshop-style *mechanism* paper (not a deployable context-extension method). External review (2 independent engineers) ranked the open risks — see "Open items".
 - **Interference (E8):** overwrite works but ~75-94% of its errors are STALE values, caused by lost write order inside a chunk (smaller chunks fix it). At matched state size the 2-layer
   MLP memory ties a linear memory on distinct-key overwrite but beats it on colliding keys (0.72 vs 0.49) and on long streams (0.69 vs 0.41).
@@ -79,6 +82,7 @@ stream task:  [ fact fact fact ... fact ][ query query ... ]      fact  = key+va
 | E6 | Retention round (`ret_*`, 75 runs): why does B lose old facts (acc by age 0.73 → 0.23)? | **Not decay, not capacity.** Gradient horizon + curriculum: acc@512 0.43 → **0.69**, 15/15 seeds take off | Recipe: long BPTT + curriculum + clip 0.05 |
 | E7a | LLM integration (Phase 2): frozen Qwen2-0.5B + memory, segmented | **mid** insertion + window 8 best. But **swap control: 95–99% of the gain is a generic adapter** (no recall) | Gate 2b not passed; diagnose |
 | E9 | LLM paired controls: document-free adapter + adapter-matched oracle (`paired_ctl`) | Fair ceiling is far lower than the old oracle (long-context 0.06 vs 0.62). Memory beats the doc-free adapter by +0.96 / +0.26 / +0.48 NLL; closes 48% / 23% / 33% of the fair gap | Report ON vs doc-free adapter and the fair gap; drop the old "% of oracle gap" |
+| E13 | Localisation probes (pre-registered): storage / key / hidden / read top-1 on colliding facts + overwrite cue probe, 6 models | Storage above chance in every healthy model; key, hidden and read at chance → rule (A): addressing failure, entity relation not in the frozen single-position representation as a dominant direction. Overwrite = recency (cue-free 0.83), not a cue leak | Key construction is the fix; data is not |
 | E12 | Stage 2 (pre-registered): train on colliding / overwrite / single programmatic data, 50/25/15/10 mixture, 3 seeds + dose + control arms | Binding not learned (colliding ranking seen 0.31, held-out 0.34 vs chance 0.33); 2/3 seeds lost document recall (generic adapter); the one healthy seed gets overwrite 0.94 (a surface cue, not binding); single-fact control 1.36 NLL, colliding 0.38 | Criteria 1+2 FAIL; confounded by recall collapse → fine-tune from model v1, probe the overwrite cue |
 | E11 | Stage 0: zero-shot eval of model v1 on programmatic overwrite / colliding / haystack / absent sets (new style) — NLL, generation, likelihood ranking | NLL gains document-specific (wrong doc worse than none) but entity binding at chance (0.33 vs 0.33; haystack 0.31); exact generation ≈ 0; the frozen oracle itself is stale 37% / confused 22-45% | Train on overwrite/colliding data (Stage 2); report binding by ranking, not generation |
 | E10 | LLM chunk/width screen (`fix_d`) + standalone gated DeltaNet at matched state | chunk 32/16/8: long-ctx NLL 1.46/1.40/1.43 (no effect, 1.6-2.8× cost). Width 256/512/1024: 1.46/1.32/1.28 (diminishing). Gated DeltaNet: best at plain overwrite (0.97 vs 0.73), far worse on capacity (0.08-0.19 vs 0.69 @512 facts) and colliding keys | Keep model v1 = hidden 256, chunk 32; DeltaNet baseline done |
@@ -338,7 +342,7 @@ By decision rule (c) ("seen colliding ranking ≤0.40 → H_data rejected") the 
    test H_data. Plausible cause: the programmatic documents are uncropped (the crop curriculum was applied only to Gemini documents) and full-BPTT second-order training on 1300-token documents from step 0 does not take off — the same
    take-off problem E6 cured with a curriculum. The mixture itself also hurts: even the clean-single control loses 0.26 NLL (1.36 vs 1.10) and mix25 loses 0.9.
 2. *The one healthy seed (2) still shows no binding:* colliding ranking 0.38 (by #colliders 1/3/7: 0.58 / 0.25 / 0.30 vs chance 0.50 / 0.25 / 0.12 — a signal only at a single collider). So the straightforward data fix did not produce binding even when recall survived.
-3. *The overwrite numbers are probably a cue, not binding.* Seed 2 reaches 0.94 on seen overwrite — above the frozen oracle (0.76) — and 0.76 on held-out overwrite although the held-out restatement templates are new; but they still contain
+3. *(CORRECTED by E13: the overwrite skill is mainly recency, not a cue — cue-free 0.83, cue-on-earlier 0.70 for the later value.)* *The overwrite numbers are probably a cue, not binding.* Seed 2 reaches 0.94 on seen overwrite — above the frozen oracle (0.76) — and 0.76 on held-out overwrite although the held-out restatement templates are new; but they still contain
    "now" / "new". The single-fact control reaches 0.63 on overwrite with NO overwrite data, consistent with the memory's inherent preference for later writes. None of this is entity binding (colliding stays at chance).
 4. *Seed spread is huge* (overwrite 0.48 / 0.46 / 0.94): never report these means without the per-seed values.
 **What this changes.** The easy explanation ("it just never saw collisions") is not enough: with 10.6K colliding examples the best seed is still ≈ chance on binding. The architecture-limit explanation is plausible (keys come from a single frozen mid-layer
@@ -347,6 +351,41 @@ token position; the entity may not be recoverable from that vector) but is NOT p
 (no "now" / "new" / "changed") and with the old/new order swapped; (c) a mechanistic probe of the key: is the queried entity recoverable from the key vector at the answer position (linear probe / retrieval at the FIRST value token only);
 (d) if (a)-(c) stay at chance, design the key construction (e.g. entity-aware keys from several positions) — a method change, not more data.
 Cost note: this stage ran on Modal GPUs only (no Gemini / Fireworks / any API); 6 training runs + 9 eval jobs.
+
+### E13 — localisation probes (done, judged by the pre-registered rules)
+Models: model v1 (Stage B seeds 0-2), `s2_mix50_s2` (healthy Stage 2 seed), `s2_single50_s0` (control), `s2_mix50_s0` (collapsed seed). Sets: `eval_seen_colliding`, `eval_heldout_colliding` (300 each; k = 2/4/8 → pooled chance 0.29).
+```
+SEEN set — top-1 among the k facts [Wilson 95%]   STORAGE (own key)   KEY (addressing)    HIDDEN (pre-W_k)    READ (actual)      write gate fact/doc
+model v1 s0                                        0.50 [0.44,0.56]    0.31 [0.26,0.36]    0.28 [0.23,0.33]    0.32 [0.27,0.37]   0.175 / 0.081
+model v1 s1                                        0.51 [0.45,0.57]    0.30 [0.25,0.35]    0.28 [0.23,0.33]    0.28 [0.24,0.34]   0.284 / 0.086
+model v1 s2                                        0.62 [0.56,0.67]    0.30 [0.25,0.35]    0.28 [0.23,0.33]    0.29 [0.24,0.35]   0.345 / 0.083
+Stage 2 healthy seed (s2_mix50_s2)                 0.63 [0.58,0.69]    0.29 [0.24,0.34]    0.28 [0.23,0.33]    0.32 [0.27,0.38]   0.742 / 0.054
+Stage 2 control (single50)                         0.43 [0.38,0.49]    0.28 [0.23,0.33]    0.28 [0.23,0.33]    0.32 [0.27,0.37]   0.786 / 0.065
+Stage 2 collapsed seed (s2_mix50_s0)               0.34 [0.29,0.39]    0.27 [0.23,0.33]    0.28 [0.23,0.33]    0.26 [0.21,0.31]   0.727 / 0.651
+HELD-OUT set: storage 0.41-0.62 for the healthy models (collapsed 0.34); key 0.27-0.31; hidden 0.26-0.27; read 0.29-0.30 — the same pattern.
+by #colliders (seen; chance 0.50 / 0.25 / 0.12): storage model v1 s0 0.73 / 0.51 / 0.26, Stage 2 healthy 0.81 / 0.61 / 0.48; key 0.54 / 0.25 / 0.13 and 0.52 / 0.26 / 0.09 (= chance)
+margins (target cos − best distractor cos): storage +0.01 … +0.06, key −0.02 … −0.03, hidden −0.023, read −0.03 … −0.08
+value distinctness: max cosine between candidate values 0.54-0.74 except `cost` (0.97 — values share the first token "€"), so `cost` is excluded from storage/read conclusions; the verdict holds without it.
+```
+**Verdict by rule (A):** storage is above chance in every healthy model, key is not → **addressing failure**; hidden is not above chance either → at the question position the frozen layer-12 state does not point at the asked fact's write
+position more than at a colliding fact's. The memory is effectively "the most recent / most salient value of this type": it STORES facts distinguishably (selective writes: gate 0.74 at facts vs 0.05 elsewhere in the healthy seed),
+but the question cannot ADDRESS one of several similar facts. Stage 2 training improved storage (8 facts: 0.26 → 0.48) and left addressing at chance — which is why more binding data did not help. The collapsed seed writes
+everywhere (gate 0.65 over the whole document) and its storage falls to chance: collapse = indiscriminate writing.
+**Limit of the hidden test (stated before anyone over-reads it):** it uses raw cosine similarity, so it shows the entity relation is not the DOMINANT direction of the single-position state — not that no learned linear map
+could extract it. The decisive cheap follow-up is a supervised linear probe on captured vectors (train a key map on seen documents, test on held-out): if no linear map from single positions addresses the right fact, keys
+must pool several positions / come from other layers; if one does, the existing W_k simply was never pushed to learn it (a key objective would fix it).
+
+**Cue probe** (300 each, share preferring the LATER value; chance 0.50):
+```
+                          orig (cue on later)   cuefree (no cue)   cuefirst: later / follows cue   frozen oracle orig / cuefree / cuefirst-later
+model v1 (3 seeds)        0.53-0.57             0.48-0.49          0.43-0.47 / 0.53-0.57            0.86 / 0.89 / 0.93
+Stage 2 healthy seed      0.90                  0.83               0.70 / 0.30
+Stage 2 control           0.58                  0.87               0.88 / 0.12
+Stage 2 collapsed seed    0.48                  0.48               0.51 / 0.49                      no memory: 0.50 / 0.53 / 0.51
+```
+Rule: leak if `orig` ≥ 0.85 AND `cuefree` ≤ 0.60 → **not triggered** (cuefree 0.83). Cue-following ≥ 0.70 → **not triggered** (0.30). The healthy seed's overwrite skill is mainly RECENCY (the later write wins in ΔW), with a
+modest cue effect (~0.07-0.13). This corrects E12, which guessed "a surface cue". It is consistent with E13: overwrite needs no entity addressing (one entity), colliding facts do. The control prefers the later value even more
+(0.87-0.88) but drops to 0.58 when the later statement uses a restatement template it never saw — template sensitivity of the readout, not a cue.
 
 ## Pre-registration — localisation probes (E13), written BEFORE running them; do not edit after results arrive
 Decided with the external reviewer: before any more training, localise WHERE binding fails with eval-only probes. Order: (1) chunk-8 arm — had already finished before the stop request; its result is committed but
